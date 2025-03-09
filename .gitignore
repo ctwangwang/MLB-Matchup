@@ -1,0 +1,19 @@
+# 忽略 Python 虛擬環境
+venv/
+__pycache__/
+Backup/
+Document/
+
+# 忽略 SQLite 資料庫
+mlb_data/mlb_2024.db
+
+# 忽略 VSCode 設定
+.vscode/
+
+# 忽略 Streamlit 產生的檔案
+.streamlit/
+
+mlb_stats.db
+reset_database.py
+scheduled_update.py
+test1.py
