@@ -5,6 +5,7 @@ import os
 import pandas as pd
 from fastapi import FastAPI
 import streamlit as st
+from config import MLB_TEAMS
 
 # === 🏠 設定資料夾 & SQLite 資料庫 ===
 DATA_DIR = "mlb_data"
@@ -13,40 +14,6 @@ DB_PATH = os.path.join(DATA_DIR, "mlb_2024.db")
 
 # === ⚾ FastAPI 應用 ===
 app = FastAPI()
-
-# 30 支 MLB 球隊（球隊名稱: 球隊 ID）
-MLB_TEAMS = {
-    "New York Yankees": 147,
-    "Los Angeles Dodgers": 119,
-    "Boston Red Sox": 111,
-    "Chicago Cubs": 112,
-    "San Francisco Giants": 137,
-    "St. Louis Cardinals": 138,
-    "Houston Astros": 117,
-    "Atlanta Braves": 144,
-    "Toronto Blue Jays": 141,
-    "Philadelphia Phillies": 143,
-    "New York Mets": 121,
-    "Texas Rangers": 140,
-    "San Diego Padres": 135,
-    "Washington Nationals": 120,
-    "Tampa Bay Rays": 139,
-    "Cleveland Guardians": 114,
-    "Milwaukee Brewers": 158,
-    "Chicago White Sox": 145,
-    "Cincinnati Reds": 113,
-    "Pittsburgh Pirates": 134,
-    "Arizona Diamondbacks": 109,
-    "Seattle Mariners": 136,
-    "Minnesota Twins": 142,
-    "Baltimore Orioles": 110,
-    "Detroit Tigers": 116,
-    "Colorado Rockies": 115,
-    "Oakland Athletics": 133,
-    "Kansas City Royals": 118,
-    "Miami Marlins": 146,
-    "Los Angeles Angels": 108,
-}
 
 
 # === 📌 創建 SQLite 連接 & 表格 ===
@@ -125,79 +92,105 @@ def get_player_stats(player_id):
 
 
 def get_recent_games(player_id):
-    url = f"https://statsapi.mlb.com/api/v1/people/{player_id}/stats?stats=gameLog&season=2024&group=hitting"
+    """獲取 2025 春訓 & 例行賽最近 5 場數據，並手動計算 OPS"""
+    url = f"https://statsapi.mlb.com/api/v1/people/{player_id}/stats?stats=gameLog&season=2025&gameType=S,R&group=hitting"
     response = requests.get(url).json()
     stats = response.get("stats", [])
 
     if stats:
-        ops_list = []
-        avg_list = []
-        obp_list = []
-        slg_list = []
+        hits, at_bats, walks, hbp, sac_fly, total_bases = (
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        )  # 初始化計算變數
 
-        for game in stats[0]["splits"][-5:]:  # 取最近 5 場
+        for game in stats[0]["splits"][-5:]:  # 取最近 5 場比賽
             stat = game["stat"]
-            ops_list.append(float(stat.get("ops", 0)))
-            avg_list.append(float(stat.get("avg", 0)))
-            obp_list.append(float(stat.get("obp", 0)))
-            slg_list.append(float(stat.get("slg", 0)))
+            hits += int(stat.get("hits", 0))  # 安打數
+            at_bats += int(stat.get("atBats", 0))  # 打數
+            walks += int(stat.get("baseOnBalls", 0))  # 四壞球
+            hbp += int(stat.get("hitByPitch", 0))  # 觸身球
+            sac_fly += int(stat.get("sacFlies", 0))  # 高飛犧牲打
+            total_bases += int(stat.get("totalBases", 0))  # 總壘打數
 
-        avg_ops = sum(ops_list) / len(ops_list) if ops_list else 0
-        avg_avg = sum(avg_list) / len(avg_list) if avg_list else 0
-        avg_obp = sum(obp_list) / len(obp_list) if obp_list else 0
-        avg_slg = sum(slg_list) / len(slg_list) if slg_list else 0
+        # **手動計算 AVG, OBP, SLG**
+        avg = hits / at_bats if at_bats else 0  # 打擊率 AVG
+        obp = (
+            (hits + walks + hbp) / (at_bats + walks + hbp + sac_fly)
+            if (at_bats + walks + hbp + sac_fly)
+            else 0
+        )  # 上壘率 OBP
+        slg = total_bases / at_bats if at_bats else 0  # 長打率 SLG
+        ops = obp + slg  # 手動計算 OPS
 
-        return (player_id, avg_avg, avg_obp, avg_slg, avg_ops)
+        return player_id, avg, obp, slg, ops
 
-    return (player_id, 0, 0, 0, 0)  # 沒有數據時，回傳 0
+    return player_id, 0, 0, 0, 0  # 無數據時，回傳 0
 
 
-def update_data():
-    teams = requests.get("https://statsapi.mlb.com/api/v1/teams?sportId=1").json()[
-        "teams"
-    ]
-
+def update_season_data():
+    """更新球員 2024 賽季數據（只需運行一次）"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # **清除舊數據，但不刪除表**
     cursor.execute("DELETE FROM player_season_stats")
-    cursor.execute("DELETE FROM player_recent_stats")
     conn.commit()
 
-    for team in teams:
-        team_id = team["id"]
-        team_name = team["name"]
+    for team_name, team_id in MLB_TEAMS.items():
         print(f"📥 更新 2025 年球隊名單: {team_name}")
 
-        # **確保 roster 來自 2025 年**
-        players = get_team_roster(team_id)  # 這邊是 2025 年的球員
-
+        players = get_team_roster(team_id)
         for player in players:
             player_id = player["player_id"]
             full_name = player["full_name"]
+
             print(f"🔍 查詢 {full_name} ({player_id}) 的 2024 年數據")
-
-            # **查詢 2024 年的數據**
             season_stats = get_player_stats(player_id)
-            recent_stats = get_recent_games(player_id)
 
-            # **存入 SQLite**
             cursor.execute(
                 "INSERT OR REPLACE INTO player_season_stats VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (player_id, full_name, team_id, team_name, *season_stats),
             )
+
+            time.sleep(0.5)  # 避免 API 過載
+
+    conn.commit()
+    conn.close()
+    print("✅ 2024 年數據更新完成！")
+
+
+def update_recent_data():
+    """每天運行，更新球員最近 5 場比賽數據（2025 春訓 & 例行賽）"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM player_recent_stats")
+    conn.commit()
+
+    for team_name, team_id in MLB_TEAMS.items():
+        print(f"📥 更新 2025 年 {team_name} 最近 5 場比賽數據")
+
+        players = get_team_roster(team_id)
+        for player in players:
+            player_id = player["player_id"]
+            full_name = player["full_name"]
+
+            print(f"🔍 查詢 {full_name} ({player_id}) 的最近 5 場比賽數據")
+            recent_stats = get_recent_games(player_id)
 
             cursor.execute(
                 "INSERT OR REPLACE INTO player_recent_stats VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (player_id, full_name, team_id, *recent_stats[1:]),
             )
 
-            time.sleep(1)  # 避免 API 過載
+            time.sleep(0.5)  # 避免 API 過載
 
     conn.commit()
     conn.close()
-    print("✅ 2025 年陣容的 2024 年數據更新完成！")
+    print("✅ 2025 最近 5 場比賽數據更新完成！")
 
 
 # === 🏆 API：查詢最佳打者 ===
@@ -287,7 +280,7 @@ def display_hitter_data(team_name, hitter_data):
         ).round(3)
 
         # **✅ 標題加上球隊名稱**
-        st.write(f"### ⚾ {team_name}")
+        st.write(f"### {team_name}")
         st.table(df.set_index("打者"))  # 隱藏 index
     else:
         st.write(f"⚠️ {team_name} 沒有可用的數據")
@@ -356,7 +349,20 @@ def get_matchup(team_id: int, pitcher_id: int):
 
 # === 🎮 Streamlit UI ===
 def start_streamlit():
-    st.title("⚾ MLB 對戰數據分析")
+    st.markdown(
+        """
+        <style>
+        h1 { font-size: 60px !important; }
+        h2 { font-size: 45px !important; }
+        .stTable { font-size: 22px !important; }
+        label { font-size: 24px !important; font-weight: bold; } /* 放大 selectbox 標題字體 */
+        div[data-baseweb="select"] > div { font-size: 20px !important; } /* 放大 selectbox 選項字體 */
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.title("⚾ MLB 對戰數據分析")  # Add baseball emoji (⚾) to the main title
 
     # 選擇球隊
     team_name = st.selectbox("選擇你的球隊", list(MLB_TEAMS.keys()))
@@ -385,32 +391,35 @@ def start_streamlit():
     selected_pitcher_id = pitcher_ids[selected_pitche_name]
 
     # 查詢數據
-    # 當按下「分析」按鈕時
     if st.button("分析"):
         url = f"http://localhost:8000/matchup?team_id={team_id}&pitcher_id={selected_pitcher_id}"
         data = requests.get(url).json()
 
-        # **顯示最佳打者數據**
+        # **🏆 2024當季 OPS 最高打者**
         if data.get("best_season_hitter"):
             display_hitter_data(
-                f"{data.get('team_name')} 2024 當季 OPS 最高打者",
+                f"🏆 當季 OPS 最高打者 {data.get('team_name')}",  # Add trophy emoji (🏆)
                 data.get("best_season_hitter"),
             )
+
+        # **📈 最近 5 場 OPS 最高打者**
         if data.get("best_recent_hitter"):
             display_hitter_data(
-                f"{data.get('team_name')} 最近 5 場 OPS 最高打者",
+                f"📈 最近 5 場 OPS 最高打者 {data.get('team_name')}",  # Add line chart emoji (📈)
                 data.get("best_recent_hitter"),
             )
+
+        # **🔥 對該投手 OPS 最高打者**
         if data.get("best_vs_pitcher_hitter"):
             display_hitter_data(
-                f"{data.get('team_name')} 對該投手 OPS 最高打者",
+                f"🔥 對該投手 OPS 最高打者 {data.get('team_name')}",  # Add flame emoji (🔥)
                 data.get("best_vs_pitcher_hitter"),
             )
 
-        # **顯示所有對戰投手的球員數據**
+        # **📊 全隊對該投手的數據**
         if data.get("all_hitters_vs_pitcher"):
             display_hitter_data(
-                f"{data.get('team_name')} 打者對該投手的數據",
+                f"📊 全隊對該投手的數據 {data.get('team_name')}",  # Add bar chart emoji (📊)
                 data.get("all_hitters_vs_pitcher"),
             )
 
@@ -419,6 +428,8 @@ def start_streamlit():
 if __name__ == "__main__":
     print("⚾ 更新數據中...")
     # update_data()
+    # update_season_data()
+    # update_recent_data()
     print("⚡ 啟動 FastAPI：`uvicorn mlb_matchup:app --reload`")
     print("🎮 啟動 Streamlit：`streamlit run mlb_matchup.py`")
     print("⚡ 啟動 Streamlit UI...")
