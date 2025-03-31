@@ -1,4 +1,9 @@
-# 30 支 MLB 球隊（球隊名稱: 球隊 ID）
+# config/team_config.py
+"""
+MLB球隊配置，包含球隊名稱和ID的映射
+"""
+
+# MLB球隊ID映射
 MLB_TEAMS = {
     "New York Yankees": 147,
     "Los Angeles Dodgers": 119,
@@ -31,3 +36,7 @@ MLB_TEAMS = {
     "Miami Marlins": 146,
     "Los Angeles Angels": 108,
 }
+
+# 數據儲存配置
+DATA_DIR = "mlb_data"
+DB_NAME = "mlb_2024.db"
