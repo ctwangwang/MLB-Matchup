@@ -22,7 +22,7 @@ def switch_to_analysis_tab(pitcher_id, team_id, pitcher_name, team_name):
     st.session_state.active_tab = "Batter vs. Pitcher Analysis"
 
     # Force rerun to apply changes immediately
-    st.experimental_rerun()
+    st.rerun()
 
 
 def main_display(

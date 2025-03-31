@@ -121,7 +121,7 @@ if (
 
     if time_since_last_refresh >= st.session_state.refresh_interval:
         st.session_state.last_refresh = current_time
-        st.experimental_rerun()
+        st.rerun()
 
 
 # Function to switch tabs via callback
@@ -184,8 +184,8 @@ if st.session_state.active_tab == "Live Score Tracker":
     time_diff = (current_time - st.session_state.last_refresh).total_seconds()
 
     # Check URL parameters first for game_id
-    query_params = st.experimental_get_query_params()
-    game_id_from_url = query_params.get("game_id", [""])[0]
+    # query_params = st.experimental_get_query_params()
+    game_id_from_url = st.query_params.get("game_id", "")
 
     # Check if we have a game ID from environment (for the launcher script)
     env_game_id = os.environ.get("GAME_ID", "")
@@ -212,7 +212,7 @@ if st.session_state.active_tab == "Live Score Tracker":
         if selected_game and "ID:" in selected_game:
             new_game_id = selected_game.split("ID: ")[1].strip(")")
             # Update URL with new game ID
-            st.experimental_set_query_params(game_id=new_game_id)
+            st.query_params(game_id=new_game_id)
             # Set in session state
             st.session_state.selected_game_id = new_game_id
             # Reset refresh timer
@@ -303,7 +303,7 @@ if st.session_state.active_tab == "Live Score Tracker":
         if not game_id and default_game_id:
             game_id = default_game_id
             # Also update the URL
-            st.experimental_set_query_params(game_id=game_id)
+            st.query_params(game_id=game_id)
 
     else:
         # No games found - allow manual entry
@@ -321,7 +321,7 @@ if st.session_state.active_tab == "Live Score Tracker":
 
         # Button to set the manually entered game ID
         if st.sidebar.button("Set Game ID"):
-            st.experimental_set_query_params(game_id=manual_game_id)
+            st.query_params(game_id=manual_game_id)
             st.session_state.selected_game_id = manual_game_id
             st.session_state.last_refresh = datetime.datetime.now()
             # No explicit rerun - the button click will cause Streamlit to rerun
@@ -369,7 +369,7 @@ if st.session_state.active_tab == "Live Score Tracker":
     # Add manual refresh button with a distinctive color and full width
     if st.sidebar.button("🔁 REFRESH DATA NOW 🔁", key="refresh_button"):
         st.session_state.last_refresh = datetime.datetime.now()
-        st.experimental_rerun()
+        st.rerun()
 
     # Only proceed if we have a game ID
     if game_id:
@@ -437,7 +437,7 @@ elif st.session_state.active_tab == "Batter vs. Pitcher Analysis":
         st.warning("No current pitcher selected for analysis.")
         if st.button("Go to Custom Matchup Analysis"):
             st.session_state.active_tab = "Custom Matchup Analysis"
-            st.experimental_rerun()
+            st.rerun()
 
     # Function to switch back to score tracker immediately
     def return_to_previous_tab():
@@ -466,7 +466,7 @@ elif st.session_state.active_tab == "Batter vs. Pitcher Analysis":
         st.session_state.pending_tab_switch = True
 
         # Force rerun to apply changes immediately
-        st.experimental_rerun()
+        st.rerun()
 
     if st.button("Return to Previous View", on_click=return_to_previous_tab):
         pass
@@ -595,7 +595,7 @@ elif st.session_state.active_tab == "Custom Matchup Analysis":
         st.session_state.pending_tab_switch = True
 
         # Force rerun to apply changes immediately
-        st.experimental_rerun()
+        st.rerun()
 
     # And update the button to use this new function:
     if st.button("Return to Previous View", on_click=return_to_previous_tab):
