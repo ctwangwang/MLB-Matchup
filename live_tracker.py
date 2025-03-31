@@ -212,7 +212,7 @@ if st.session_state.active_tab == "Live Score Tracker":
         if selected_game and "ID:" in selected_game:
             new_game_id = selected_game.split("ID: ")[1].strip(")")
             # Update URL with new game ID
-            st.query_params(game_id=new_game_id)
+            st.query_params["game_id"] = new_game_id
             # Set in session state
             st.session_state.selected_game_id = new_game_id
             # Reset refresh timer
@@ -303,7 +303,7 @@ if st.session_state.active_tab == "Live Score Tracker":
         if not game_id and default_game_id:
             game_id = default_game_id
             # Also update the URL
-            st.query_params(game_id=game_id)
+            st.query_params["game_id"] = game_id
 
     else:
         # No games found - allow manual entry
@@ -321,7 +321,7 @@ if st.session_state.active_tab == "Live Score Tracker":
 
         # Button to set the manually entered game ID
         if st.sidebar.button("Set Game ID"):
-            st.query_params(game_id=manual_game_id)
+            st.query_params["game_id"] = manual_game_id
             st.session_state.selected_game_id = manual_game_id
             st.session_state.last_refresh = datetime.datetime.now()
             # No explicit rerun - the button click will cause Streamlit to rerun
