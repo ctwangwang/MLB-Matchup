@@ -7,12 +7,54 @@ import os
 import sys
 import subprocess
 import datetime
+import requests
+import json
 
 # Set the environment var to use standalone mode if needed
 os.environ["USE_STANDALONE_MODE"] = "1"
 
-# Use a specific game ID that works as default - a more recent one for better testing
-game_id = "778549"  # You can change this to another working game ID
+
+def get_first_live_game_id():
+    """
+    Get the first live game ID from MLB API.
+    If no live games are found, return the first upcoming game.
+    If no upcoming games are found, return the first completed game.
+    If no games are found at all, return a default game ID.
+    """
+    try:
+        # Get today's date in YYYY-MM-DD format
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+
+        # Use the same function as in live_tracker.py to get today's games
+        from mlb_data import get_today_games
+
+        today_games = get_today_games(today)
+
+        if today_games:
+            # First priority: Live games
+            live_games = [g for g in today_games if g["status"] == "Live"]
+            if live_games:
+                return str(live_games[0]["id"])
+
+            # Second priority: Upcoming games
+            upcoming_games = [g for g in today_games if g["status"] == "Preview"]
+            if upcoming_games:
+                return str(upcoming_games[0]["id"])
+
+            # Third priority: Completed games
+            finished_games = [g for g in today_games if g["status"] == "Final"]
+            if finished_games:
+                return str(finished_games[0]["id"])
+
+        # Fallback to default game ID if no games found
+        return "778549"  # Default game ID as fallback
+    except Exception as e:
+        print(f"Error getting live game ID: {e}")
+        return "778549"  # Default game ID in case of error
+
+
+# Get the game ID of the first live game
+game_id = get_first_live_game_id()
 
 # Show timestamp for initialization
 print(
