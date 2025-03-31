@@ -16,7 +16,8 @@ from config.team_config import MLB_TEAMS
 USE_MOCK_DATA = os.environ.get("USE_MOCK_DATA") == "1"
 
 # API 基礎URL
-API_BASE_URL = "http://localhost:8000"
+# API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 
 
 # 模擬數據函數

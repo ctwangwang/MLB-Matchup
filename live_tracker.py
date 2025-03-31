@@ -59,7 +59,8 @@ st.set_page_config(
 )
 
 # API base URL for your existing backend
-API_BASE_URL = "http://localhost:8000"
+# API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 
 # Initialize session state variables
 if "selected_game_id" not in st.session_state:
