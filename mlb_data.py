@@ -146,15 +146,13 @@ def get_live_data(game_id):
     Returns:
         dict: Current score and game state information or None if error
     """
-
-    url = f"https://statsapi.mlb.com/api/v1.1/game/{game_id}/feed/live"
-
     try:
+        url = f"https://statsapi.mlb.com/api/v1.1/game/{game_id}/feed/live"
         response = requests.get(url)
         response.raise_for_status()  # Raise exception for HTTP errors
         data = response.json()
 
-        # Extract teams information
+        # Extract teams information (common for all game states)
         away_team = data["gameData"]["teams"]["away"]["name"]
         away_team_abbrev = data["gameData"]["teams"]["away"].get(
             "abbreviation", away_team[:3].upper()
@@ -165,29 +163,6 @@ def get_live_data(game_id):
             "abbreviation", home_team[:3].upper()
         )
         home_team_id = data["gameData"]["teams"]["home"]["id"]
-
-        # Extract current score - handling potential missing keys safely
-        linescore = data["liveData"].get("linescore", {})
-
-        # Default values if keys are missing
-        away_score = 0
-        home_score = 0
-
-        # Safely get scores
-        if "teams" in linescore:
-            if "away" in linescore["teams"] and "runs" in linescore["teams"]["away"]:
-                away_score = linescore["teams"]["away"]["runs"] or 0
-            if "home" in linescore["teams"] and "runs" in linescore["teams"]["home"]:
-                home_score = linescore["teams"]["home"]["runs"] or 0
-
-        # Get current inning information
-        inning = linescore.get("currentInning", "N/A")
-        inning_half = linescore.get("inningHalf", "N/A")
-        inning_state = linescore.get("inningState", "")
-
-        # Get game status
-        game_status = data["gameData"]["status"]["detailedState"]
-        abstract_game_state = data["gameData"]["status"]["abstractGameState"]
 
         # Get scheduled start time
         start_time_str = data["gameData"]["datetime"].get("dateTime", "")
@@ -200,59 +175,198 @@ def get_live_data(game_id):
             except (ValueError, TypeError):
                 start_time = None
 
-        # Get current play information if available
-        current_play_info = "No active play information"
-        if "currentPlay" in data["liveData"].get("plays", {}):
-            current_play = data["liveData"]["plays"]["currentPlay"]
-            if "result" in current_play and "description" in current_play["result"]:
-                current_play_info = current_play["result"]["description"]
+        # Get game status
+        game_status = data["gameData"]["status"]["detailedState"]
+        abstract_game_state = data["gameData"]["status"]["abstractGameState"]
 
-        # Get pitcher and batter information if available
-        pitcher_info = "N/A"
-        batter_info = "N/A"
-        pitcher_id = None
-        batter_id = None
+        # Common base result dict
+        result = {
+            "away_team": away_team,
+            "away_team_abbrev": away_team_abbrev,
+            "away_team_id": away_team_id,
+            "home_team": home_team,
+            "home_team_abbrev": home_team_abbrev,
+            "home_team_id": home_team_id,
+            "status": game_status,
+            "abstract_game_state": abstract_game_state,
+            "start_time": start_time,
+        }
 
-        if "currentPlay" in data["liveData"].get("plays", {}):
-            matchup = data["liveData"]["plays"]["currentPlay"].get("matchup", {})
-            if "pitcher" in matchup:
-                pitcher_name = matchup["pitcher"].get("fullName", "Unknown")
-                pitcher_info = pitcher_name
-                pitcher_id = matchup["pitcher"].get("id")
-            if "batter" in matchup:
-                batter_name = matchup["batter"].get("fullName", "Unknown")
-                batter_info = batter_name
-                batter_id = matchup["batter"].get("id")
-
-        # Get probable pitchers when available
-        probable_away_pitcher = None
-        probable_home_pitcher = None
-        probable_away_pitcher_id = None
-        probable_home_pitcher_id = None
-
+        # Get probable pitchers
         if "probablePitchers" in data["gameData"]:
             pitchers = data["gameData"].get("probablePitchers", {})
             if "away" in pitchers:
-                probable_away_pitcher = pitchers["away"].get("fullName", "TBD")
-                probable_away_pitcher_id = pitchers["away"].get("id")
+                result["probable_away_pitcher"] = pitchers["away"].get(
+                    "fullName", "TBD"
+                )
+                result["probable_away_pitcher_id"] = pitchers["away"].get("id")
+            else:
+                result["probable_away_pitcher"] = "TBD"
+                result["probable_away_pitcher_id"] = None
+
             if "home" in pitchers:
-                probable_home_pitcher = pitchers["home"].get("fullName", "TBD")
-                probable_home_pitcher_id = pitchers["home"].get("id")
+                result["probable_home_pitcher"] = pitchers["home"].get(
+                    "fullName", "TBD"
+                )
+                result["probable_home_pitcher_id"] = pitchers["home"].get("id")
+            else:
+                result["probable_home_pitcher"] = "TBD"
+                result["probable_home_pitcher_id"] = None
+        else:
+            result["probable_away_pitcher"] = "TBD"
+            result["probable_away_pitcher_id"] = None
+            result["probable_home_pitcher"] = "TBD"
+            result["probable_home_pitcher_id"] = None
 
-        # Get splits information if available
-        batter_situation = None
-        pitcher_situation = None
-        men_on_base_situation = None
+        # Different logic for different game states
+        if abstract_game_state == "Live":
+            # For live games, add all live game details
+            return process_live_game_data(data, result)
+        elif abstract_game_state == "Preview":
+            # For preview games, just return the basic info
+            return process_preview_game_data(data, result)
+        elif abstract_game_state == "Final":
+            # For completed games, add final scores
+            return process_final_game_data(data, result)
+        else:
+            # Unknown state
+            result["error"] = f"Unknown game state: {abstract_game_state}"
+            return result
 
-        if "currentPlay" in data["liveData"].get("plays", {}):
-            matchup = data["liveData"]["plays"]["currentPlay"].get("matchup", {})
-            splits = matchup.get("splits", {})
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching data: {e}")
+        return None
+    except (KeyError, IndexError, TypeError) as e:
+        st.error(f"Error parsing data: {str(e)}")
+        return None
 
-            # Map the splits to situation codes and descriptions
-            batter_split = splits.get("batter", "")
-            pitcher_split = splits.get("pitcher", "")
-            men_on_split = splits.get("menOnBase", "")
 
+def process_live_game_data(data, base_result):
+    """Process live game data"""
+    result = base_result.copy()
+
+    # Extract the linescore
+    linescore = data["liveData"].get("linescore", {})
+
+    # Get current score
+    away_score = 0
+    home_score = 0
+    away_hits = 0
+    home_hits = 0
+    away_errors = 0
+    home_errors = 0
+
+    # Safely get scores
+    if "teams" in linescore:
+        if "away" in linescore["teams"] and "runs" in linescore["teams"]["away"]:
+            away_score = linescore["teams"]["away"]["runs"] or 0
+            away_hits = linescore["teams"]["away"].get("hits", 0) or 0
+            away_errors = linescore["teams"]["away"].get("errors", 0) or 0
+        if "home" in linescore["teams"] and "runs" in linescore["teams"]["home"]:
+            home_score = linescore["teams"]["home"]["runs"] or 0
+            home_hits = linescore["teams"]["home"].get("hits", 0) or 0
+            home_errors = linescore["teams"]["home"].get("errors", 0) or 0
+
+    # Get inning info
+    inning = linescore.get("currentInning", 0)
+    inning_half = linescore.get("inningHalf", "")
+    inning_state = linescore.get("inningState", "")
+
+    # Get baserunner information
+    bases_occupied = []
+    offense = linescore.get("offense", {})
+    if offense:
+        if offense.get("first"):
+            bases_occupied.append(1)
+        if offense.get("second"):
+            bases_occupied.append(2)
+        if offense.get("third"):
+            bases_occupied.append(3)
+
+    # Get count
+    balls = linescore.get("balls", 0)
+    strikes = linescore.get("strikes", 0)
+    outs = linescore.get("outs", 0)
+
+    # Get current play information
+    current_play_info = "No active play information"
+    if "currentPlay" in data["liveData"].get("plays", {}):
+        current_play = data["liveData"]["plays"]["currentPlay"]
+        if "result" in current_play and "description" in current_play["result"]:
+            current_play_info = current_play["result"]["description"]
+
+    # Get pitcher and batter information
+    pitcher_info = "N/A"
+    batter_info = "N/A"
+    pitcher_id = None
+    batter_id = None
+
+    if "currentPlay" in data["liveData"].get("plays", {}):
+        matchup = data["liveData"]["plays"]["currentPlay"].get("matchup", {})
+        if "pitcher" in matchup:
+            pitcher_name = matchup["pitcher"].get("fullName", "Unknown")
+            pitcher_info = pitcher_name
+            pitcher_id = matchup["pitcher"].get("id")
+        if "batter" in matchup:
+            batter_name = matchup["batter"].get("fullName", "Unknown")
+            batter_info = batter_name
+            batter_id = matchup["batter"].get("id")
+
+    # Get batter hot/cold zones
+    batter_hot_cold_zones = None
+    if "currentPlay" in data["liveData"].get("plays", {}):
+        matchup = data["liveData"]["plays"]["currentPlay"].get("matchup", {})
+        batter_hot_cold_zones = matchup.get("batterHotColdZoneStats", None)
+
+    # Get batter handedness
+    batter_handedness = None
+    if "currentPlay" in data["liveData"].get("plays", {}):
+        matchup = data["liveData"]["plays"]["currentPlay"].get("matchup", {})
+        bat_side = matchup.get("batSide", {})
+        if bat_side:
+            batter_handedness = bat_side.get("code")  # This will be "R" or "L"
+
+    # Get inning scores
+    inning_scores = []
+    innings = linescore.get("innings", [])
+    for i in range(1, 10):  # Standard 9 innings
+        inning_data = innings[i - 1] if i <= len(innings) else {}
+
+        # Safely get inning scores with proper type handling
+        away_inning_score = inning_data.get("away", {}).get("runs", "-")
+        home_inning_score = inning_data.get("home", {}).get("runs", "-")
+
+        # Convert to int if possible, otherwise keep as string
+        try:
+            away_inning_score = (
+                int(away_inning_score) if str(away_inning_score).isdigit() else "-"
+            )
+            home_inning_score = (
+                int(home_inning_score) if str(home_inning_score).isdigit() else "-"
+            )
+        except (ValueError, TypeError):
+            away_inning_score = "-"
+            home_inning_score = "-"
+
+        inning_scores.append(
+            {"inning": i, "away": away_inning_score, "home": home_inning_score}
+        )
+
+    # Get splits information for current batter vs pitcher situational stats
+    batter_situation = None
+    pitcher_situation = None
+    men_on_base_situation = None
+
+    if "currentPlay" in data["liveData"].get("plays", {}):
+        matchup = data["liveData"]["plays"]["currentPlay"].get("matchup", {})
+        splits = matchup.get("splits", {})
+
+        # Map the splits to situation codes and descriptions
+        batter_split = splits.get("batter", "")
+        pitcher_split = splits.get("pitcher", "")
+        men_on_split = splits.get("menOnBase", "")
+
+        if batter_split:
             batter_situation = {
                 "code": SITUATION_MAPPING["batter"]
                 .get(batter_split, {})
@@ -262,6 +376,7 @@ def get_live_data(game_id):
                 .get("description", "Unknown"),
             }
 
+        if pitcher_split:
             pitcher_situation = {
                 "code": SITUATION_MAPPING["pitcher"]
                 .get(pitcher_split, {})
@@ -271,6 +386,7 @@ def get_live_data(game_id):
                 .get("description", "Unknown"),
             }
 
+        if men_on_split:
             men_on_base_situation = {
                 "code": SITUATION_MAPPING["menOnBase"]
                 .get(men_on_split, {})
@@ -280,112 +396,175 @@ def get_live_data(game_id):
                 .get("description", "Unknown"),
             }
 
-        if batter_situation["code"] == "Unknown":
-            batter_situation = None
-        if pitcher_situation["code"] == "Unknown":
-            pitcher_situation = None
-        if men_on_base_situation["code"] == "Unknown":
-            men_on_base_situation = None
+    # Only include situation stats that have valid codes
+    if batter_situation and batter_situation["code"] == "Unknown":
+        batter_situation = None
+    if pitcher_situation and pitcher_situation["code"] == "Unknown":
+        pitcher_situation = None
+    if men_on_base_situation and men_on_base_situation["code"] == "Unknown":
+        men_on_base_situation = None
 
-        # Get inning scores safely
-        inning_scores = []
-        innings = linescore.get("innings", [])
-        for i in range(1, 10):  # Standard 9 innings
-            inning_data = innings[i - 1] if i <= len(innings) else {}
-
-            # Safely get inning scores with proper type handling
-            away_inning_score = inning_data.get("away", {}).get("runs", "-")
-            home_inning_score = inning_data.get("home", {}).get("runs", "-")
-
-            # Convert to int if possible, otherwise keep as string
-            try:
-                away_inning_score = (
-                    int(away_inning_score) if str(away_inning_score).isdigit() else "-"
-                )
-                home_inning_score = (
-                    int(home_inning_score) if str(home_inning_score).isdigit() else "-"
-                )
-            except (ValueError, TypeError):
-                away_inning_score = "-"
-                home_inning_score = "-"
-
-            inning_scores.append(
-                {"inning": i, "away": away_inning_score, "home": home_inning_score}
-            )
-
-        # Get base runners information
-        bases_occupied = []
-        offense = linescore.get("offense", {})
-        if offense:
-            if offense.get("first"):
-                bases_occupied.append(1)
-            if offense.get("second"):
-                bases_occupied.append(2)
-            if offense.get("third"):
-                bases_occupied.append(3)
-
-        # Get outs
-        outs = linescore.get("outs", 0) if abstract_game_state == "Live" else "-"
-
-        # Get balls and strikes count
-        balls = linescore.get("balls", 0) if abstract_game_state == "Live" else "-"
-        strikes = linescore.get("strikes", 0) if abstract_game_state == "Live" else "-"
-
-        # Extract batter hot/cold zones if available
-        batter_hot_cold_zones = None
-        if "currentPlay" in data["liveData"].get("plays", {}):
-            matchup = data["liveData"]["plays"]["currentPlay"].get("matchup", {})
-            batter_hot_cold_zones = matchup.get("batterHotColdZoneStats", None)
-
-        # Get batter handedness
-        batter_handedness = None
-        if "currentPlay" in data["liveData"].get("plays", {}):
-            matchup = data["liveData"]["plays"]["currentPlay"].get("matchup", {})
-            bat_side = matchup.get("batSide", {})
-            if bat_side:
-                batter_handedness = bat_side.get("code")  # This will be "R" or "L"
-
-        return {
-            "away_team": away_team,
-            "away_team_abbrev": away_team_abbrev,
-            "away_team_id": away_team_id,
-            "home_team": home_team,
-            "home_team_abbrev": home_team_abbrev,
-            "home_team_id": home_team_id,
+    # Add all the data to the result
+    result.update(
+        {
             "away_score": away_score,
             "home_score": home_score,
+            "away_hits": away_hits,
+            "home_hits": home_hits,
+            "away_errors": away_errors,
+            "home_errors": home_errors,
             "inning": inning,
             "inning_half": inning_half,
             "inning_state": inning_state,
-            "status": game_status,
-            "abstract_game_state": abstract_game_state,
-            "start_time": start_time,
+            "bases_occupied": bases_occupied,
+            "balls": balls,
+            "strikes": strikes,
+            "outs": outs,
             "current_play": current_play_info,
             "pitcher": pitcher_info,
             "pitcher_id": pitcher_id,
             "batter": batter_info,
             "batter_id": batter_id,
-            "probable_away_pitcher": probable_away_pitcher,
-            "probable_away_pitcher_id": probable_away_pitcher_id,
-            "probable_home_pitcher": probable_home_pitcher,
-            "probable_home_pitcher_id": probable_home_pitcher_id,
             "inning_scores": inning_scores,
-            "bases_occupied": bases_occupied,
-            "outs": outs,
-            "balls": balls,
-            "strikes": strikes,
             "batter_situation": batter_situation,
             "pitcher_situation": pitcher_situation,
             "men_on_base_situation": men_on_base_situation,
             "batter_hot_cold_zones": batter_hot_cold_zones,
             "batter_handedness": batter_handedness,
         }
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching data: {e}")
-        return None
-    except (KeyError, IndexError, TypeError) as e:
-        st.error(f"Error parsing data: {str(e)}")
-        return None
+    )
+
+    return result
+
+
+def process_preview_game_data(data, base_result):
+    """Process preview game data"""
+    result = base_result.copy()
+
+    # For preview games, we still want to set default values for fields that would be shown in a live game
+    result.update(
+        {
+            "away_score": 0,
+            "home_score": 0,
+            "away_hits": 0,
+            "home_hits": 0,
+            "away_errors": 0,
+            "home_errors": 0,
+            "inning": 0,
+            "inning_half": "Top",
+            "inning_state": "Preview",
+            "bases_occupied": [],
+            "balls": 0,
+            "strikes": 0,
+            "outs": 0,
+            "current_play": "Game has not started yet",
+            "pitcher": "N/A",
+            "pitcher_id": None,
+            "batter": "N/A",
+            "batter_id": None,
+            "inning_scores": [],
+        }
+    )
+
+    return result
+
+
+def process_final_game_data(data, base_result):
+    """Process final game data"""
+    result = base_result.copy()
+
+    # Extract the linescore
+    linescore = data["liveData"].get("linescore", {})
+
+    # Get final score
+    away_score = 0
+    home_score = 0
+    away_hits = 0
+    home_hits = 0
+    away_errors = 0
+    home_errors = 0
+
+    # Safely get scores
+    if "teams" in linescore:
+        if "away" in linescore["teams"] and "runs" in linescore["teams"]["away"]:
+            away_score = linescore["teams"]["away"]["runs"] or 0
+            away_hits = linescore["teams"]["away"].get("hits", 0) or 0
+            away_errors = linescore["teams"]["away"].get("errors", 0) or 0
+        if "home" in linescore["teams"] and "runs" in linescore["teams"]["home"]:
+            home_score = linescore["teams"]["home"]["runs"] or 0
+            home_hits = linescore["teams"]["home"].get("hits", 0) or 0
+            home_errors = linescore["teams"]["home"].get("errors", 0) or 0
+
+    # Get inning scores
+    inning_scores = []
+    innings = linescore.get("innings", [])
+    for i in range(1, 10):  # Standard 9 innings
+        inning_data = innings[i - 1] if i <= len(innings) else {}
+
+        # Safely get inning scores with proper type handling
+        away_inning_score = inning_data.get("away", {}).get("runs", "-")
+        home_inning_score = inning_data.get("home", {}).get("runs", "-")
+
+        # Convert to int if possible, otherwise keep as string
+        try:
+            away_inning_score = (
+                int(away_inning_score) if str(away_inning_score).isdigit() else "-"
+            )
+            home_inning_score = (
+                int(home_inning_score) if str(home_inning_score).isdigit() else "-"
+            )
+        except (ValueError, TypeError):
+            away_inning_score = "-"
+            home_inning_score = "-"
+
+        inning_scores.append(
+            {"inning": i, "away": away_inning_score, "home": home_inning_score}
+        )
+
+    # Get winning and losing pitchers
+    winning_pitcher = "N/A"
+    winning_pitcher_id = None
+    losing_pitcher = "N/A"
+    losing_pitcher_id = None
+
+    decisions = data["liveData"].get("decisions", {})
+    if "winner" in decisions:
+        winning_pitcher = decisions["winner"].get("fullName", "N/A")
+        winning_pitcher_id = decisions["winner"].get("id")
+    if "loser" in decisions:
+        losing_pitcher = decisions["loser"].get("fullName", "N/A")
+        losing_pitcher_id = decisions["loser"].get("id")
+
+    # Add all the data to the result
+    result.update(
+        {
+            "away_score": away_score,
+            "home_score": home_score,
+            "away_hits": away_hits,
+            "home_hits": home_hits,
+            "away_errors": away_errors,
+            "home_errors": home_errors,
+            "inning": linescore.get("currentInning", 9),
+            "inning_half": "Final",
+            "inning_state": "Final",
+            "inning_scores": inning_scores,
+            "winning_pitcher": winning_pitcher,
+            "winning_pitcher_id": winning_pitcher_id,
+            "losing_pitcher": losing_pitcher,
+            "losing_pitcher_id": losing_pitcher_id,
+            "current_play": "Game has ended",
+            "pitcher": "N/A",
+            "pitcher_id": None,
+            "batter": "N/A",
+            "batter_id": None,
+            "bases_occupied": [],
+            "balls": 0,
+            "strikes": 0,
+            "outs": 0,
+        }
+    )
+
+    return result
 
 
 # Function to get batter vs pitcher analysis

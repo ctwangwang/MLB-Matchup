@@ -395,22 +395,22 @@ def create_hot_cold_zones(
         if batter_handedness.upper() == "R":
             # Add left arrow (for right-handed batter)
             fig.add_annotation(
-                x=-1,
-                y=3,
+                x=0.6,  # -1
+                y=0.5,  # 3
                 xref="x",
                 yref="y",
-                text="➡️",
+                text="⬅️",
                 showarrow=False,
                 font=dict(size=20),
             )
         elif batter_handedness.upper() == "L":
             # Add right arrow (for left-handed batter)
             fig.add_annotation(
-                x=4,
-                y=3,
+                x=2.4,  # 4
+                y=0.5,  # 3
                 xref="x",
                 yref="y",
-                text="⬅️",
+                text="➡️",
                 showarrow=False,
                 font=dict(size=20),
             )
@@ -497,7 +497,7 @@ def create_hot_cold_zones(
             y=[None],
             mode="markers",
             marker=dict(size=0),  # Invisible marker
-            name="➡️ Right-Handed",  # Include emoji in name
+            name="➡️ Left-Handed",  # Include emoji in name
             showlegend=True,
         )
     )
@@ -508,7 +508,7 @@ def create_hot_cold_zones(
             y=[None],
             mode="markers",
             marker=dict(size=0),  # Invisible marker
-            name="⬅️ Left-Handed",  # Include emoji in name
+            name="⬅️ Right-Handed",  # Include emoji in name
             showlegend=True,
         )
     )
