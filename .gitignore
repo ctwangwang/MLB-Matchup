@@ -5,7 +5,7 @@ Backup/
 Document/
 
 # 忽略 SQLite 資料庫
-mlb_data/mlb_2024.db
+#mlb_data/mlb_2024.db
 
 # 忽略 VSCode 設定
 .vscode/

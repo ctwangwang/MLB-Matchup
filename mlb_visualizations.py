@@ -5,121 +5,148 @@ import numpy as np
 
 
 def create_baseball_diamond(bases_occupied):
-    """Create an enhanced baseball diamond visualization showing which bases are occupied."""
+    """Create a baseball diamond visualization with the infield area shifted downward."""
 
     # Ensure bases_occupied is a list
     if not isinstance(bases_occupied, list):
         bases_occupied = []
 
+    import plotly.graph_objects as go
+    import numpy as np
+
     fig = go.Figure()
 
-    # Draw the infield grass (light green circle)
+    # Vertical shift amount (positive value moves downward)
+    vertical_shift = 0.5  # Adjust this value to control how much to shift down
+
+    # Create outfield background (lighter green)
+    fig.update_layout(
+        plot_bgcolor="rgba(175, 214, 157, 1)",  # Light green background
+        paper_bgcolor="rgba(0, 0, 0, 0)",  # Transparent
+    )
+
+    # Draw the infield dirt (brown circle) - adjusted for vertical shift
     theta = np.linspace(0, 2 * np.pi, 100)
-    r = 1.8
+    r = 2.2
     x_circle = r * np.cos(theta)
-    y_circle = r * np.sin(theta)
+    y_circle = r * np.sin(theta) + vertical_shift  # Shifted down
 
     fig.add_trace(
         go.Scatter(
             x=x_circle,
             y=y_circle,
             fill="toself",
-            fillcolor="rgba(65, 180, 75, 0.5)",
-            line=dict(color="rgba(65, 180, 75, 0.5)"),
+            fillcolor="rgba(176, 124, 85, 1)",  # Brown dirt color
+            line=dict(color="rgba(176, 124, 85, 1)"),
             showlegend=False,
         )
     )
 
-    # Draw the baseball diamond with thicker lines
-    fig.add_trace(
-        go.Scatter(
-            x=[0, 1, 0, -1, 0],
-            y=[0, 1, 2, 1, 0],
-            mode="lines",
-            line=dict(color="white", width=3),
-            showlegend=False,
-        )
-    )
+    # Draw the infield grass (light green diamond with stripes) - shifted down
+    infield_x = [0, 1, 0, -1, 0]
+    infield_y = [
+        -0.7 + vertical_shift,
+        0.3 + vertical_shift,
+        1.3 + vertical_shift,
+        0.3 + vertical_shift,
+        -0.7 + vertical_shift,
+    ]
 
-    # Add the dirt infield (tan colored diamond)
     fig.add_trace(
         go.Scatter(
-            x=[0, 1.1, 0, -1.1, 0],
-            y=[-0.1, 1, 2.1, 1, -0.1],
+            x=infield_x,
+            y=infield_y,
             fill="toself",
-            fillcolor="rgba(205, 170, 125, 0.7)",
-            line=dict(color="rgba(205, 170, 125, 0.7)"),
+            fillcolor="rgba(175, 214, 157, 0.8)",  # Light green
+            line=dict(color="rgba(175, 214, 157, 0.8)"),
             showlegend=False,
         )
     )
 
-    # Redraw the base paths on top of the dirt
+    # Add diagonal stripes to the infield - adjusted for the shifted diamond
+    for i in range(-10, 11):
+        if i % 2 == 0:  # Skip every other line for spacing
+            continue
+        fig.add_shape(
+            type="line",
+            x0=-1.5 + (i * 0.3),
+            y0=-0.7 + vertical_shift,  # Shifted starting point
+            x1=1.5 + (i * 0.3),
+            y1=2.3 + vertical_shift,  # Shifted ending point
+            line=dict(color="rgba(160, 200, 140, 0.8)", width=12),
+            layer="below",
+        )
+
+    # Draw the base paths (white lines) - shifted down
     fig.add_trace(
         go.Scatter(
-            x=[0, 1, 0, -1, 0],
-            y=[0, 1, 2, 1, 0],
+            x=infield_x,
+            y=infield_y,
             mode="lines",
-            line=dict(color="white", width=3),
+            line=dict(color="white", width=5),
             showlegend=False,
         )
     )
 
-    # Draw pitcher's mound
+    # Draw pitcher's mound - shifted down
     fig.add_trace(
         go.Scatter(
             x=[0],
-            y=[1],
+            y=[0.3 + vertical_shift],  # Shifted down
             mode="markers",
             marker=dict(
                 symbol="circle",
-                size=12,
-                color="rgba(205, 170, 125, 1)",
-                line=dict(color="white", width=1),
+                size=35,
+                color="rgba(176, 124, 85, 1)",  # Brown dirt color
+                line=dict(color="white", width=2),
             ),
             showlegend=False,
         )
     )
 
-    # Draw home plate with better styling
-    fig.add_trace(
-        go.Scatter(
-            x=[0],
-            y=[0],
-            mode="markers",
-            marker=dict(
-                symbol="pentagon",
-                size=18,
-                color="white",
-                line=dict(color="black", width=2),
-            ),
-            showlegend=False,
-        )
+    # Add pitcher's rubber (white rectangle) - shifted down
+    fig.add_shape(
+        type="rect",
+        x0=-0.15,
+        y0=0.25 + vertical_shift,  # Shifted down
+        x1=0.15,
+        y1=0.35 + vertical_shift,  # Shifted down
+        fillcolor="white",
+        line=dict(color="white"),
     )
 
-    # Draw bases with appropriate colors based on occupation
-    base_positions = [(1, 1), (0, 2), (-1, 1)]  # (x, y) for 1st, 2nd, 3rd bases
+    # Define home plate points - shifted down
+    home_plate_points = [
+        [0, -0.7 + vertical_shift],  # Bottom point
+        [-0.125, -0.6 + vertical_shift],  # Bottom left corner
+        [-0.125, -0.5 + vertical_shift],  # Top left corner
+        [0.125, -0.5 + vertical_shift],  # Top right corner
+        [0.125, -0.6 + vertical_shift],  # Bottom right corner
+        [0, -0.7 + vertical_shift],  # Back to bottom point
+    ]
+
+    # Add the home plate as a filled shape using a path
+    fig.add_shape(
+        type="path",
+        path="M " + " L ".join(f"{p[0]} {p[1]}" for p in home_plate_points) + " Z",
+        fillcolor="white",
+        line=dict(color="white", width=3),
+        layer="above",
+    )
+
+    # Draw bases with appropriate colors - shifted positions
+    base_positions = [
+        (1, 0.3 + vertical_shift),  # 1st base
+        (0, 1.3 + vertical_shift),  # 2nd base
+        (-1, 0.3 + vertical_shift),  # 3rd base
+    ]
     base_names = ["1st Base", "2nd Base", "3rd Base"]
 
     for i, (x, y) in enumerate(base_positions):
         base_num = i + 1
-        # More vibrant red for occupied bases, and add shadow effect
-        color = "rgba(255, 50, 50, 0.95)" if base_num in bases_occupied else "white"
-        size = 18 if base_num in bases_occupied else 15
-        # Add base shadow first
-        fig.add_trace(
-            go.Scatter(
-                x=[x + 0.02],
-                y=[y - 0.02],
-                mode="markers",
-                marker=dict(
-                    symbol="square",
-                    size=size,
-                    color="rgba(0, 0, 0, 0.3)",
-                ),
-                showlegend=False,
-            )
-        )
-        # Then the actual base
+        occupied = base_num in bases_occupied
+        size = 28
+
         fig.add_trace(
             go.Scatter(
                 x=[x],
@@ -128,28 +155,27 @@ def create_baseball_diamond(bases_occupied):
                 marker=dict(
                     symbol="square",
                     size=size,
-                    color=color,
-                    line=dict(color="black", width=2),
+                    color="red" if occupied else "white",
+                    line=dict(color="white", width=2),
                 ),
                 name=base_names[i],
                 showlegend=False,
             )
         )
 
-    # Update layout
+    # Update layout with adjusted Y range to accommodate the shift
     fig.update_layout(
-        width=340,
-        height=340,
-        plot_bgcolor="rgba(30, 120, 30, 1)",  # Darker green for outfield
+        width=500,
+        height=500,
         xaxis=dict(
-            range=[-2, 2],
+            range=[-2.5, 2.5],
             showgrid=False,
             zeroline=False,
             showticklabels=False,
             fixedrange=True,
         ),
         yaxis=dict(
-            range=[-0.5, 2.5],
+            range=[-0.7 + vertical_shift, 2.6 + vertical_shift],  # Shifted range
             showgrid=False,
             zeroline=False,
             showticklabels=False,
@@ -158,23 +184,6 @@ def create_baseball_diamond(bases_occupied):
             scaleratio=1,
         ),
         margin=dict(l=0, r=0, t=0, b=0),
-        paper_bgcolor="rgba(0,0,0,0)",
-    )
-
-    # Add outfield wall as an arc
-    theta = np.linspace(-np.pi / 4, 5 * np.pi / 4, 100)
-    r_wall = 2.8
-    x_wall = r_wall * np.cos(theta)
-    y_wall = r_wall * np.sin(theta) - 0.2
-
-    fig.add_trace(
-        go.Scatter(
-            x=x_wall,
-            y=y_wall,
-            mode="lines",
-            line=dict(color="rgba(60, 60, 60, 0.8)", width=5, dash="solid"),
-            showlegend=False,
-        )
     )
 
     return fig

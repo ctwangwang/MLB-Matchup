@@ -439,37 +439,6 @@ elif st.session_state.active_tab == "Batter vs. Pitcher Analysis":
             st.session_state.active_tab = "Custom Matchup Analysis"
             st.rerun()
 
-    # Function to switch back to score tracker immediately
-    def return_to_previous_tab():
-        """
-        Function to switch back to the previous tab
-        Ensures we always have a valid previous tab to return to
-        """
-        # If no previous tab is set or it's the same as current tab, default to Live Score Tracker
-        if (
-            not st.session_state.previous_tab
-            or st.session_state.previous_tab == st.session_state.active_tab
-        ):
-            target_tab = "Live Score Tracker"
-        else:
-            target_tab = st.session_state.previous_tab
-
-        # Switch to the target tab
-        st.session_state.active_tab = target_tab
-
-        # If returning to Live Score Tracker, enable auto-refresh and update refresh time
-        if target_tab == "Live Score Tracker":
-            st.session_state.auto_refresh_enabled = True
-            st.session_state.last_refresh = datetime.datetime.now()
-
-        # Set flag to indicate tab switch is pending
-        st.session_state.pending_tab_switch = True
-
-        # Force rerun to apply changes immediately
-        st.rerun()
-
-    if st.button("Return to Previous View", on_click=return_to_previous_tab):
-        pass
 
 elif st.session_state.active_tab == "Custom Matchup Analysis":
     if previous_tab != st.session_state.active_tab:
@@ -568,38 +537,7 @@ elif st.session_state.active_tab == "Custom Matchup Analysis":
             st.error(f"Error loading pitchers: {e}")
             st.info("Using standalone mode due to API connection issues.")
 
-    # Function to switch back to score tracker immediately
-    def return_to_previous_tab():
-        """
-        Function to switch back to the previous tab
-        Ensures we always have a valid previous tab to return to
-        """
-        # If no previous tab is set or it's the same as current tab, default to Live Score Tracker
-        if (
-            not st.session_state.previous_tab
-            or st.session_state.previous_tab == st.session_state.active_tab
-        ):
-            target_tab = "Live Score Tracker"
-        else:
-            target_tab = st.session_state.previous_tab
 
-        # Switch to the target tab
-        st.session_state.active_tab = target_tab
-
-        # If returning to Live Score Tracker, enable auto-refresh and update refresh time
-        if target_tab == "Live Score Tracker":
-            st.session_state.auto_refresh_enabled = True
-            st.session_state.last_refresh = datetime.datetime.now()
-
-        # Set flag to indicate tab switch is pending
-        st.session_state.pending_tab_switch = True
-
-        # Force rerun to apply changes immediately
-        st.rerun()
-
-    # And update the button to use this new function:
-    if st.button("Return to Previous View", on_click=return_to_previous_tab):
-        pass
 if __name__ == "__main__":
     # This will execute when run directly
     pass

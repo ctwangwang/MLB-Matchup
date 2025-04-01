@@ -290,6 +290,12 @@ def launch_live_tracker(game_id=None, port=8501, api_port=8000, force_standalone
             "localhost",
             "--server.headless",
             "false",  # Allow browser to open automatically
+            "--server.enableCORS",
+            "false",
+            "--server.enableXsrfProtection",
+            "false",
+            "--server.maxUploadSize",
+            "200",
         ],
         env=env_vars,
     )

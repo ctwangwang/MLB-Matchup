@@ -48,6 +48,7 @@ def get_today_games(date=None):
     Returns:
         list: List of game information dictionaries
     """
+
     if date is None:
         date = get_today_date()
 
@@ -145,6 +146,7 @@ def get_live_data(game_id):
     Returns:
         dict: Current score and game state information or None if error
     """
+
     url = f"https://statsapi.mlb.com/api/v1.1/game/{game_id}/feed/live"
 
     try:
