@@ -212,7 +212,7 @@ def get_batter_season_stats(player_id, season=None):
         season (int, optional): 賽季年份，若不提供則使用當前年份
 
     Returns:
-        tuple: (打擊率, 上壘率, 長打率, OPS, BABIP, AB/HR)
+        tuple: (打擊率, 上壘率, 長打率, OPS, BABIP, AB/HR, 全壘打, 打點)
     """
     # 如果沒有提供賽季，使用當前年份
     if season is None:
@@ -231,9 +231,11 @@ def get_batter_season_stats(player_id, season=None):
             data.get("ops", None),  # OPS
             data.get("babip", None),  # 打球落地安打率 BABIP
             data.get("atBatsPerHomeRun", None),  # 每全壘打打數 AB/HR
+            data.get("homeRuns", None),  # 全壘打數 HR
+            data.get("rbi", None),  # 打點 RBI
         )
 
-    return (None, None, None, None, None, None)  # 沒有數據時返回None
+    return (None, None, None, None, None, None, None, None)  # 沒有數據時返回None
 
 
 def get_pitcher_season_stats(pitcher_id, season=None):
@@ -245,7 +247,7 @@ def get_pitcher_season_stats(pitcher_id, season=None):
         season (int, optional): 賽季年份，若不提供則使用當前年份
 
     Returns:
-        tuple: (打者面對打擊率, OPS, ERA, WHIP, K/9, BB/9, H/9, HR/9)
+        tuple: (打者面對打擊率, OPS, ERA, WHIP, K/9, BB/9, H/9, HR/9, 勝場, 敗場, 中繼成功, 救援成功)
     """
     # 如果沒有提供賽季，使用當前年份
     if season is None:
@@ -266,9 +268,26 @@ def get_pitcher_season_stats(pitcher_id, season=None):
             data.get("walksPer9Inn", None),  # 每九局保送數 BB/9
             data.get("hitsPer9Inn", None),  # 每九局被安打數 H/9
             data.get("homeRunsPer9", None),  # 每九局被全壘打數 HR/9
+            data.get("wins", None),  # 勝場 W
+            data.get("losses", None),  # 敗場 L
+            data.get("holds", None),  # 中繼成功 HLD
+            data.get("saves", None),  # 救援成功 SV
         )
 
-    return (None, None, None, None, None, None, None, None)  # 沒有數據時返回None
+    return (
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    )  # 沒有數據時返回None
 
 
 def get_player_recent_games(player_id, season=None, games_count=5):

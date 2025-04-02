@@ -599,7 +599,7 @@ def get_fip_minus_color(fip_minus):
         elif 90 < fip_minus <= 110:
             return "#4169e1"
         elif 110 < fip_minus <= 120:
-            return "green"
+            return "#00FF00"
         else:  # > 120
             return "#F4A460"
     except (ValueError, TypeError):
@@ -626,7 +626,7 @@ def get_pitcher_war_color(war):
         elif 1 <= war < 3:
             return "#4169e1"
         elif 0 <= war < 1:
-            return "green"
+            return "#00FF00"
         else:  # < 0
             return "#F4A460"
     except (ValueError, TypeError):
@@ -654,7 +654,7 @@ def get_wrc_plus_color(wrc_plus):
         elif 110 <= wrc_plus < 130:
             return "#4169e1"  # Average
         elif 90 <= wrc_plus < 110:
-            return "green"  # Below average
+            return "#00FF00"  # Below average
         else:  # < 90
             return "#F4A460"  # Poor
     except (ValueError, TypeError):
@@ -681,7 +681,7 @@ def get_batter_war_color(war):
         elif 2 <= war < 4:
             return "#4169e1"
         elif 1 <= war < 2:
-            return "green"
+            return "#00FF00"
         else:  # < 1
             return "#F4A460"
     except (ValueError, TypeError):

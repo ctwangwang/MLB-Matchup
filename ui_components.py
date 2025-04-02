@@ -404,7 +404,7 @@ def main_display(
                             <span>Starter</span>
                         </div>
                         <div class="color-item">
-                            <span class="color-dot" style="background-color: green;"></span>
+                            <span class="color-dot" style="background-color: #00FF00;"></span>
                             <span>Role Player</span>
                         </div>
                         <div class="color-item">
@@ -445,7 +445,26 @@ def main_display(
                         st.markdown(
                             f"**{score_data['pitcher']}'s Season {previous_season} Stats:**"
                         )
-
+                        wins_val = (
+                            int(pitcher_stats[8])
+                            if pitcher_stats and pitcher_stats[8] is not None
+                            else "-"
+                        )
+                        losses_val = (
+                            int(pitcher_stats[9])
+                            if pitcher_stats and pitcher_stats[9] is not None
+                            else "-"
+                        )
+                        holds_val = (
+                            int(pitcher_stats[10])
+                            if pitcher_stats and pitcher_stats[10] is not None
+                            else "-"
+                        )
+                        saves_val = (
+                            int(pitcher_stats[11])
+                            if pitcher_stats and pitcher_stats[11] is not None
+                            else "-"
+                        )
                         # Process values for color coding
                         era_val = (
                             f"{float(pitcher_stats[2]):.2f}"
@@ -466,7 +485,7 @@ def main_display(
                         fip_minus_color = (
                             get_fip_minus_color(fip_minus_val)
                             if fip_minus_val != "-"
-                            else "black"
+                            else "white"
                         )
 
                         war_val = (
@@ -478,7 +497,7 @@ def main_display(
                         war_color = (
                             get_pitcher_war_color(war_val)
                             if war_val != "-"
-                            else "black"
+                            else "white"
                         )
 
                         # Use HTML to display colored values
@@ -506,12 +525,20 @@ def main_display(
                         </style>
                         <table class="stats-table">
                             <tr>
+                                <th>W</th>
+                                <th>L</th>
+                                <th>HLD</th>
+                                <th>SV</th>
                                 <th>ERA</th>
                                 <th>WHIP</th>
                                 <th>FIP-</th>
                                 <th>WAR</th>
                             </tr>
                             <tr>
+                                <td>{wins_val}</td>
+                                <td>{losses_val}</td>
+                                <td>{holds_val}</td>
+                                <td>{saves_val}</td>
                                 <td>{era_val}</td>
                                 <td>{whip_val}</td>
                                 <td style="color: {fip_minus_color}; font-weight: bold;">{fip_minus_val}</td>
@@ -552,6 +579,16 @@ def main_display(
                             f"**{batter_name}'s Season {previous_season} Stats:**"
                         )
 
+                        hr_val = (
+                            int(season_stats[6])
+                            if season_stats and season_stats[6] is not None
+                            else "-"
+                        )
+                        rbi_val = (
+                            int(season_stats[7])
+                            if season_stats and season_stats[7] is not None
+                            else "-"
+                        )
                         # Process values for color coding
                         avg_val = (
                             f"{float(season_stats[0]):.3f}"
@@ -582,7 +619,7 @@ def main_display(
                         wrc_plus_color = (
                             get_wrc_plus_color(wrc_plus_val)
                             if wrc_plus_val != "-"
-                            else "black"
+                            else "white"
                         )
 
                         war_val = (
@@ -592,7 +629,7 @@ def main_display(
                         )
                         war_display = f"{war_val:.1f}" if war_val != "-" else "-"
                         war_color = (
-                            get_batter_war_color(war_val) if war_val != "-" else "black"
+                            get_batter_war_color(war_val) if war_val != "-" else "white"
                         )
 
                         # Use HTML to display colored values
@@ -620,6 +657,8 @@ def main_display(
                         </style>
                         <table class="stats-table">
                             <tr>
+                                <th>HR</th>
+                                <th>RBI</th>
                                 <th>AVG</th>
                                 <th>OBP</th>
                                 <th>SLG</th>
@@ -628,6 +667,8 @@ def main_display(
                                 <th>WAR</th>
                             </tr>
                             <tr>
+                                <td>{hr_val}</td>
+                                <td>{rbi_val}</td>
                                 <td>{avg_val}</td>
                                 <td>{obp_val}</td>
                                 <td>{slg_val}</td>
@@ -685,10 +726,10 @@ def main_display(
                                 <th>OPS</th>
                             </tr>
                             <tr>
-                                <td>{avg_val}</td>
-                                <td>{obp_val}</td>
-                                <td>{slg_val}</td>
-                                <td>{ops_val}</td>
+                                <td>{matchup_stats["avg"]}</td>
+                                <td>{matchup_stats["obp"]}</td>
+                                <td>{matchup_stats["slg"]}</td>
+                                <td>{matchup_stats["ops"]}</td>
                             </tr>
                         </table>
                         """,
@@ -724,11 +765,34 @@ def main_display(
                             pitcher_stats = get_pitcher_situation_stats(
                                 score_data["pitcher_id"],
                                 score_data["pitcher_situation"]["code"],
+                                2024,
                             )
                             if pitcher_stats:
                                 st.markdown(
                                     f"**{score_data['pitcher']} {score_data['pitcher_situation']['description']} (Season {pitcher_stats['season']})**"
                                 )
+                                # Extract pitcher situation stats with unique variable names
+                                p_sit_avg = (
+                                    f"{pitcher_stats['avg']:.3f}"
+                                    if pitcher_stats.get("avg") is not None
+                                    else "-"
+                                )
+                                p_sit_obp = (
+                                    f"{pitcher_stats['obp']:.3f}"
+                                    if pitcher_stats.get("obp") is not None
+                                    else "-"
+                                )
+                                p_sit_slg = (
+                                    f"{pitcher_stats['slg']:.3f}"
+                                    if pitcher_stats.get("slg") is not None
+                                    else "-"
+                                )
+                                p_sit_ops = (
+                                    f"{pitcher_stats['ops']:.3f}"
+                                    if pitcher_stats.get("ops") is not None
+                                    else "-"
+                                )
+
                                 st.markdown(
                                     f"""
                                 <style>
@@ -759,10 +823,10 @@ def main_display(
                                         <th>OPS</th>
                                     </tr>
                                     <tr>
-                                        <td>{avg_val}</td>
-                                        <td>{obp_val}</td>
-                                        <td>{slg_val}</td>
-                                        <td>{ops_val}</td>
+                                        <td>{p_sit_avg}</td>
+                                        <td>{p_sit_obp}</td>
+                                        <td>{p_sit_slg}</td>
+                                        <td>{p_sit_ops}</td>
                                     </tr>
                                 </table>
                                 """,
@@ -778,12 +842,34 @@ def main_display(
                             pitcher_men_stats = get_pitcher_situation_stats(
                                 score_data["pitcher_id"],
                                 score_data["men_on_base_situation"]["code"],
+                                2024,
                             )
                             if pitcher_men_stats:
                                 st.markdown(
                                     f"**{score_data['pitcher']} when {score_data['men_on_base_situation']['description']} (Season {pitcher_men_stats['season']})**"
                                 )
                                 # In the situation stats section, modify the DataFrame creation to:
+                                p_men_avg = (
+                                    f"{pitcher_men_stats['avg']:.3f}"
+                                    if pitcher_men_stats.get("avg") is not None
+                                    else "-"
+                                )
+                                p_men_obp = (
+                                    f"{pitcher_men_stats['obp']:.3f}"
+                                    if pitcher_men_stats.get("obp") is not None
+                                    else "-"
+                                )
+                                p_men_slg = (
+                                    f"{pitcher_men_stats['slg']:.3f}"
+                                    if pitcher_men_stats.get("slg") is not None
+                                    else "-"
+                                )
+                                p_men_ops = (
+                                    f"{pitcher_men_stats['ops']:.3f}"
+                                    if pitcher_men_stats.get("ops") is not None
+                                    else "-"
+                                )
+
                                 st.markdown(
                                     f"""
                                 <style>
@@ -814,10 +900,10 @@ def main_display(
                                         <th>OPS</th>
                                     </tr>
                                     <tr>
-                                        <td>{avg_val}</td>
-                                        <td>{obp_val}</td>
-                                        <td>{slg_val}</td>
-                                        <td>{ops_val}</td>
+                                        <td>{p_men_avg}</td>
+                                        <td>{p_men_obp}</td>
+                                        <td>{p_men_slg}</td>
+                                        <td>{p_men_ops}</td>
                                     </tr>
                                 </table>
                                 """,
@@ -835,12 +921,34 @@ def main_display(
                             batter_stats = get_batter_situation_stats(
                                 score_data["batter_id"],
                                 score_data["batter_situation"]["code"],
+                                2024,
                             )
                             if batter_stats:
                                 st.markdown(
                                     f"**{score_data['batter']} {score_data['batter_situation']['description']} (Season {batter_stats['season']})**"
                                 )
                                 # In the situation stats section, modify the DataFrame creation to:
+                                b_sit_avg = (
+                                    f"{batter_stats['avg']:.3f}"
+                                    if batter_stats.get("avg") is not None
+                                    else "-"
+                                )
+                                b_sit_obp = (
+                                    f"{batter_stats['obp']:.3f}"
+                                    if batter_stats.get("obp") is not None
+                                    else "-"
+                                )
+                                b_sit_slg = (
+                                    f"{batter_stats['slg']:.3f}"
+                                    if batter_stats.get("slg") is not None
+                                    else "-"
+                                )
+                                b_sit_ops = (
+                                    f"{batter_stats['ops']:.3f}"
+                                    if batter_stats.get("ops") is not None
+                                    else "-"
+                                )
+
                                 st.markdown(
                                     f"""
                                 <style>
@@ -871,10 +979,10 @@ def main_display(
                                         <th>OPS</th>
                                     </tr>
                                     <tr>
-                                        <td>{avg_val}</td>
-                                        <td>{obp_val}</td>
-                                        <td>{slg_val}</td>
-                                        <td>{ops_val}</td>
+                                        <td>{b_sit_avg}</td>
+                                        <td>{b_sit_obp}</td>
+                                        <td>{b_sit_slg}</td>
+                                        <td>{b_sit_ops}</td>
                                     </tr>
                                 </table>
                                 """,
@@ -890,12 +998,34 @@ def main_display(
                             batter_men_stats = get_batter_situation_stats(
                                 score_data["batter_id"],
                                 score_data["men_on_base_situation"]["code"],
+                                2024,
                             )
                             if batter_men_stats:
                                 st.markdown(
                                     f"**{score_data['batter']} when {score_data['men_on_base_situation']['description']} (Season {batter_men_stats['season']})**"
                                 )
                                 # In the situation stats section, modify the DataFrame creation to:
+                                b_men_avg = (
+                                    f"{batter_men_stats['avg']:.3f}"
+                                    if batter_men_stats.get("avg") is not None
+                                    else "-"
+                                )
+                                b_men_obp = (
+                                    f"{batter_men_stats['obp']:.3f}"
+                                    if batter_men_stats.get("obp") is not None
+                                    else "-"
+                                )
+                                b_men_slg = (
+                                    f"{batter_men_stats['slg']:.3f}"
+                                    if batter_men_stats.get("slg") is not None
+                                    else "-"
+                                )
+                                b_men_ops = (
+                                    f"{batter_men_stats['ops']:.3f}"
+                                    if batter_men_stats.get("ops") is not None
+                                    else "-"
+                                )
+
                                 st.markdown(
                                     f"""
                                 <style>
@@ -926,10 +1056,10 @@ def main_display(
                                         <th>OPS</th>
                                     </tr>
                                     <tr>
-                                        <td>{avg_val}</td>
-                                        <td>{obp_val}</td>
-                                        <td>{slg_val}</td>
-                                        <td>{ops_val}</td>
+                                        <td>{b_men_avg}</td>
+                                        <td>{b_men_obp}</td>
+                                        <td>{b_men_slg}</td>
+                                        <td>{b_men_ops}</td>
                                     </tr>
                                 </table>
                                 """,
