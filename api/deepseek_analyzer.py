@@ -47,6 +47,11 @@ def get_deepseek_matchup_analysis(
 
     Returns:
         str: DeepSeek's analysis of the matchup or None if request fails
+
+    Original prompt:
+    Provide a concise analysis (3-5 sentences) of how this matchup might play out based on these metrics.
+    Consider strengths, weaknesses, and relevant statistical patterns.
+    Focus on actionable insights that could impact the at-bat outcome.
     """
     if not DEEPSEEK_API_KEY:
         print(
@@ -68,9 +73,8 @@ PITCHER: {pitcher_name}
 BATTER: {batter_name}
 {formatted_batter_data}
 
-Provide a concise analysis (3-5 sentences) of how this matchup might play out based on these metrics. 
-Consider strengths, weaknesses, and relevant statistical patterns. 
-Focus on actionable insights that could impact the at-bat outcome.
+calculate win probability projections for this matchup accounting for all relevant factors and display in front. 
+Present the final assessment with a clear numerical win probability percentage and key factors most likely to determine the outcome within 10 lines.
 """
 
     # Prepare request payload
@@ -241,26 +245,32 @@ def get_matchup_insights(
 
     # Get basic pitcher stats
     try:
-        # Unpack expanded tuple (now with 8 values instead of 4)
-        avg_against, ops_against, era, whip, k_per_9, bb_per_9, h_per_9, hr_per_9 = (
-            get_pitcher_season_stats(pitcher_id, season)
-        )
-        pitcher_data.update(
-            {
-                "avg_against": avg_against if avg_against is not None else "-",
-                "ops_against": ops_against if ops_against is not None else "-",
-                "era": era if era is not None else "-",
-                "whip": whip if whip is not None else "-",
-                "k_per_9": k_per_9 if k_per_9 is not None else "-",
-                "bb_per_9": bb_per_9 if bb_per_9 is not None else "-",
-                "h_per_9": h_per_9 if h_per_9 is not None else "-",
-                "hr_per_9": hr_per_9 if hr_per_9 is not None else "-",
-            }
-        )
-    except ValueError:
-        # Handle case when not all values are returned (older version of function)
+        # Try to get all 8 values first
         try:
-            # Try with original 4 return values
+            (
+                avg_against,
+                ops_against,
+                era,
+                whip,
+                k_per_9,
+                bb_per_9,
+                h_per_9,
+                hr_per_9,
+            ) = get_pitcher_season_stats(pitcher_id, season)
+            pitcher_data.update(
+                {
+                    "avg_against": avg_against if avg_against is not None else "-",
+                    "ops_against": ops_against if ops_against is not None else "-",
+                    "era": era if era is not None else "-",
+                    "whip": whip if whip is not None else "-",
+                    "k_per_9": k_per_9 if k_per_9 is not None else "-",
+                    "bb_per_9": bb_per_9 if bb_per_9 is not None else "-",
+                    "h_per_9": h_per_9 if h_per_9 is not None else "-",
+                    "hr_per_9": hr_per_9 if hr_per_9 is not None else "-",
+                }
+            )
+        except ValueError:
+            # Fall back to getting just 4 values
             avg_against, ops_against, era, whip = get_pitcher_season_stats(
                 pitcher_id, season
             )
@@ -276,36 +286,72 @@ def get_matchup_insights(
                     "hr_per_9": "-",
                 }
             )
-        except Exception as e:
-            print(f"⚠️ Error fetching pitcher season stats: {e}")
+    except Exception as e:
+        print(f"⚠️ Error fetching pitcher season stats: {e}")
+        # Set default values
+        pitcher_data.update(
+            {
+                "avg_against": "-",
+                "ops_against": "-",
+                "era": "-",
+                "whip": "-",
+                "k_per_9": "-",
+                "bb_per_9": "-",
+                "h_per_9": "-",
+                "hr_per_9": "-",
+            }
+        )
 
     # Get advanced pitcher metrics
     try:
-        # Assuming the updated get_pitcher_sabermetrics function that returns 8 metrics
-        fip, fip_minus, war, era_minus, xfip, ra9war, rar, exli = (
-            get_pitcher_sabermetrics(pitcher_id, season)
-        )
-        pitcher_data.update(
-            {
-                "fip": fip if fip is not None else "-",
-                "fip_minus": fip_minus if fip_minus is not None else "-",
-                "war": war if war is not None else "-",
-                "era_minus": era_minus if era_minus is not None else "-",
-                "xfip": xfip if xfip is not None else "-",
-                "ra9War": ra9war if ra9war is not None else "-",
-                "rar": rar if rar is not None else "-",
-                "exli": exli if exli is not None else "-",
-            }
-        )
+        # Try to get all 8 values first
+        try:
+            fip, fip_minus, war, era_minus, xfip, ra9war, rar, exli = (
+                get_pitcher_sabermetrics(pitcher_id, season)
+            )
+            pitcher_data.update(
+                {
+                    "fip": fip if fip is not None else "-",
+                    "fip_minus": fip_minus if fip_minus is not None else "-",
+                    "war": war if war is not None else "-",
+                    "era_minus": era_minus if era_minus is not None else "-",
+                    "xfip": xfip if xfip is not None else "-",
+                    "ra9War": ra9war if ra9war is not None else "-",
+                    "rar": rar if rar is not None else "-",
+                    "exli": exli if exli is not None else "-",
+                }
+            )
+        except ValueError:
+            # Fall back to getting just 4 values or however many the function returns
+            try:
+                # Assuming the function might return 4 values in the older version
+                fip, fip_minus, war, era_minus = get_pitcher_sabermetrics(
+                    pitcher_id, season
+                )
+                pitcher_data.update(
+                    {
+                        "fip": fip if fip is not None else "-",
+                        "fip_minus": fip_minus if fip_minus is not None else "-",
+                        "war": war if war is not None else "-",
+                        "era_minus": era_minus if era_minus is not None else "-",
+                        "xfip": "-",
+                        "ra9War": "-",
+                        "rar": "-",
+                        "exli": "-",
+                    }
+                )
+            except ValueError:
+                # If it returned some other number of values, just catch and log
+                print("⚠️ Could not unpack values from get_pitcher_sabermetrics")
     except Exception as e:
         print(f"⚠️ Error fetching pitcher sabermetrics: {e}")
-        # If function doesn't return 8 values yet, handle gracefully
+        # Set default values
         pitcher_data.update(
             {
-                "fip": pitcher_data.get("fip", "-"),
-                "fip_minus": pitcher_data.get("fip_minus", "-"),
-                "war": pitcher_data.get("war", "-"),
-                "era_minus": pitcher_data.get("era_minus", "-"),
+                "fip": "-",
+                "fip_minus": "-",
+                "war": "-",
+                "era_minus": "-",
                 "xfip": "-",
                 "ra9War": "-",
                 "rar": "-",
@@ -318,24 +364,23 @@ def get_matchup_insights(
 
     # Get basic batter stats
     try:
-        # Unpack expanded tuple (now with 6 values instead of 4)
-        avg, obp, slg, ops, babip, ab_per_hr = get_batter_season_stats(
-            batter_id, season
-        )
-        batter_data.update(
-            {
-                "avg": avg if avg is not None else "-",
-                "obp": obp if obp is not None else "-",
-                "slg": slg if slg is not None else "-",
-                "ops": ops if ops is not None else "-",
-                "babip": babip if babip is not None else "-",
-                "ab_per_hr": ab_per_hr if ab_per_hr is not None else "-",
-            }
-        )
-    except ValueError:
-        # Handle case when not all values are returned (older version of function)
+        # Try to get all 6 values first
         try:
-            # Try with original 4 return values
+            avg, obp, slg, ops, babip, ab_per_hr = get_batter_season_stats(
+                batter_id, season
+            )
+            batter_data.update(
+                {
+                    "avg": avg if avg is not None else "-",
+                    "obp": obp if obp is not None else "-",
+                    "slg": slg if slg is not None else "-",
+                    "ops": ops if ops is not None else "-",
+                    "babip": babip if babip is not None else "-",
+                    "ab_per_hr": ab_per_hr if ab_per_hr is not None else "-",
+                }
+            )
+        except ValueError:
+            # Fall back to getting just 4 values
             avg, obp, slg, ops = get_batter_season_stats(batter_id, season)
             batter_data.update(
                 {
@@ -347,31 +392,41 @@ def get_matchup_insights(
                     "ab_per_hr": "-",
                 }
             )
-        except Exception as e:
-            print(f"⚠️ Error fetching batter season stats: {e}")
+    except Exception as e:
+        print(f"⚠️ Error fetching batter season stats: {e}")
+        # Set default values
+        batter_data.update(
+            {
+                "avg": "-",
+                "obp": "-",
+                "slg": "-",
+                "ops": "-",
+                "babip": "-",
+                "ab_per_hr": "-",
+            }
+        )
 
     # Get advanced batter metrics
     try:
-        # Unpack the expanded tuple (8 values now)
-        wrc, wrc_plus, war, woba, wraa, batting, spd, ubr = get_batter_sabermetrics(
-            batter_id, season
-        )
-        batter_data.update(
-            {
-                "wrc": wrc if wrc is not None else "-",
-                "wrc_plus": wrc_plus if wrc_plus is not None else "-",
-                "war": war if war is not None else "-",
-                "woba": woba if woba is not None else "-",
-                "wraa": wraa if wraa is not None else "-",
-                "batting": batting if batting is not None else "-",
-                "spd": spd if spd is not None else "-",
-                "ubr": ubr if ubr is not None else "-",
-            }
-        )
-    except ValueError:
-        # Handle case when not all values are returned (older version of function)
+        # Try to get all 8 values first
         try:
-            # Try with original 3 return values
+            wrc, wrc_plus, war, woba, wraa, batting, spd, ubr = get_batter_sabermetrics(
+                batter_id, season
+            )
+            batter_data.update(
+                {
+                    "wrc": wrc if wrc is not None else "-",
+                    "wrc_plus": wrc_plus if wrc_plus is not None else "-",
+                    "war": war if war is not None else "-",
+                    "woba": woba if woba is not None else "-",
+                    "wraa": wraa if wraa is not None else "-",
+                    "batting": batting if batting is not None else "-",
+                    "spd": spd if spd is not None else "-",
+                    "ubr": ubr if ubr is not None else "-",
+                }
+            )
+        except ValueError:
+            # Fall back to getting just 3 values
             wrc, wrc_plus, war = get_batter_sabermetrics(batter_id, season)
             batter_data.update(
                 {
@@ -385,8 +440,21 @@ def get_matchup_insights(
                     "ubr": "-",
                 }
             )
-        except Exception as e:
-            print(f"⚠️ Error fetching batter sabermetrics: {e}")
+    except Exception as e:
+        print(f"⚠️ Error fetching batter sabermetrics: {e}")
+        # Set default values
+        batter_data.update(
+            {
+                "wrc": "-",
+                "wrc_plus": "-",
+                "war": "-",
+                "woba": "-",
+                "wraa": "-",
+                "batting": "-",
+                "spd": "-",
+                "ubr": "-",
+            }
+        )
 
     # Step 3: Get head-to-head data
     vs_stats = get_vs_pitcher_stats(batter_id, pitcher_id)
