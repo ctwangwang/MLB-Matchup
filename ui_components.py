@@ -19,8 +19,6 @@ def switch_to_analysis_tab(pitcher_id, team_id, pitcher_name, team_name):
     st.session_state.analyze_pitcher_name = pitcher_name
     st.session_state.analyze_team_name = team_name
 
-    # CRITICAL: First disable auto-refresh, THEN switch tab
-    st.session_state.auto_refresh_enabled = False
     st.session_state.active_tab = "Batter vs. Pitcher Analysis"
 
     # Force rerun to apply changes immediately
@@ -194,6 +192,55 @@ def main_display(
                 "probable_home_pitcher"
             ):
                 st.subheader("Probable Pitchers")
+
+                # Add color legend explaining what each color means
+                st.markdown(
+                    """
+                    <style>
+                    .color-legend {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 12px;
+                        margin-bottom: 10px;
+                        font-size: 0.85em;
+                    }
+                    .color-item {
+                        display: flex;
+                        align-items: center;
+                    }
+                    .color-dot {
+                        width: 12px;
+                        height: 12px;
+                        border-radius: 50%;
+                        margin-right: 5px;
+                        display: inline-block;
+                    }
+                    </style>
+                    <div class="color-legend">
+                        <div class="color-item">
+                            <span class="color-dot" style="background-color: red;"></span>
+                            <span>MVP</span>
+                        </div>
+                        <div class="color-item">
+                            <span class="color-dot" style="background-color: #EE82EE;"></span>
+                            <span>All-Star</span>
+                        </div>
+                        <div class="color-item">
+                            <span class="color-dot" style="background-color: #4169e1;"></span>
+                            <span>Starter</span>
+                        </div>
+                        <div class="color-item">
+                            <span class="color-dot" style="background-color: #00FF00;"></span>
+                            <span>Role Player</span>
+                        </div>
+                        <div class="color-item">
+                            <span class="color-dot" style="background-color: #F4A460;"></span>
+                            <span>Replacement Level</span>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 away_pitcher = score_data.get("probable_away_pitcher") or "TBD"
                 home_pitcher = score_data.get("probable_home_pitcher") or "TBD"

@@ -78,17 +78,11 @@ if "analyze_pitcher_id" not in st.session_state:
 if "analyze_team_id" not in st.session_state:
     st.session_state.analyze_team_id = None
 
-if "auto_refresh_enabled" not in st.session_state:
-    st.session_state.auto_refresh_enabled = True
-
 if "analyze_pitcher_name" not in st.session_state:
     st.session_state.analyze_pitcher_name = None
 
 if "analyze_team_name" not in st.session_state:
     st.session_state.analyze_team_name = None
-
-if "refresh_interval" not in st.session_state:
-    st.session_state.refresh_interval = 30
 
 if "pending_tab_switch" not in st.session_state:
     st.session_state.pending_tab_switch = False
@@ -108,20 +102,6 @@ else:
 if st.session_state.pending_tab_switch:
     st.session_state.pending_tab_switch = False
     # No need to rerun, the current rerun cycle will apply the active_tab change
-
-# Auto-refresh logic at the top of the script
-if (
-    st.session_state.active_tab == "Live Score Tracker"
-    and st.session_state.auto_refresh_enabled
-):
-    current_time = datetime.datetime.now()
-    time_since_last_refresh = (
-        current_time - st.session_state.last_refresh
-    ).total_seconds()
-
-    if time_since_last_refresh >= st.session_state.refresh_interval:
-        st.session_state.last_refresh = current_time
-        st.rerun()
 
 
 # Function to switch tabs via callback
@@ -145,31 +125,6 @@ st.session_state.active_tab = st.radio(
     key="tab_selector",
 )
 
-# Set auto-refresh based on the active tab (only update when tab changes)
-if st.session_state.active_tab == "Live Score Tracker":
-    st.session_state.auto_refresh_enabled = True
-else:
-    st.session_state.auto_refresh_enabled = False
-
-# Show auto-refresh status with timer
-if st.session_state.auto_refresh_enabled:
-    current_time = datetime.datetime.now()
-    time_since_last_refresh = (
-        current_time - st.session_state.last_refresh
-    ).total_seconds()
-    time_remaining = max(0, st.session_state.refresh_interval - time_since_last_refresh)
-    progress = 1 - (time_remaining / st.session_state.refresh_interval)
-
-    st.sidebar.markdown(
-        f"<p style='color: green;'><small>Auto-refresh: Enabled (refreshing in {int(time_remaining)}s)</small></p>",
-        unsafe_allow_html=True,
-    )
-    st.sidebar.progress(progress)
-else:
-    st.sidebar.markdown(
-        "<p style='color: red;'><small>Auto-refresh: Disabled</small></p>",
-        unsafe_allow_html=True,
-    )
 
 # TAB 1: LIVE SCORE TRACKER
 if st.session_state.active_tab == "Live Score Tracker":
@@ -329,13 +284,6 @@ if st.session_state.active_tab == "Live Score Tracker":
         # Use the ID from URL if available, otherwise use manual entry
         game_id = game_id_from_url if game_id_from_url else manual_game_id
 
-    # Refresh interval slider
-    refresh_interval = st.sidebar.slider(
-        "Refresh interval (seconds)", min_value=10, max_value=60, value=30
-    )
-    # Update the session state with the new refresh interval
-    st.session_state.refresh_interval = refresh_interval
-
     # Display the current Game ID in the sidebar
     st.sidebar.info(f"Current Game ID: {game_id}")
 
@@ -365,7 +313,6 @@ if st.session_state.active_tab == "Live Score Tracker":
     """,
         unsafe_allow_html=True,
     )
-
     # Add manual refresh button with a distinctive color and full width
     if st.sidebar.button("🔁 REFRESH DATA NOW 🔁", key="refresh_button"):
         st.session_state.last_refresh = datetime.datetime.now()
@@ -426,9 +373,6 @@ if st.session_state.active_tab == "Live Score Tracker":
 
 # TAB 2: BATTER VS. PITCHER ANALYSIS
 elif st.session_state.active_tab == "Batter vs. Pitcher Analysis":
-    # First thing - always ensure auto-refresh is disabled in this tab
-    st.session_state.auto_refresh_enabled = False
-
     st.title("⚾ Batter vs. Pitcher Analysis")
 
     if (
