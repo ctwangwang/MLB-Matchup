@@ -14,6 +14,7 @@ def get_today_games():
     Returns:
         list: 當天賽事列表
     """
+
     # 獲取當天日期 (YYYY-MM-DD 格式)
     today_date = datetime.today().strftime("%Y-%m-%d")
 
@@ -59,17 +60,21 @@ def get_player_info(player_id):
         return None
 
 
-def get_team_roster(team_id, season=2025):
+def get_team_roster(team_id, season=None):
     """
     獲取球隊名單
 
     Args:
         team_id (int): 球隊ID
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用當前年份
 
     Returns:
         list: 球隊名單列表
     """
+    # 如果沒有提供賽季，使用當前年份
+    if season is None:
+        season = datetime.now().year
+
     url = f"https://statsapi.mlb.com/api/v1/teams/{team_id}/roster?season={season}"
     response = requests.get(url).json()
     players = response.get("roster", [])
@@ -84,17 +89,21 @@ def get_team_roster(team_id, season=2025):
     ]
 
 
-def get_team_pitchers(team_id, season=2025):
+def get_team_pitchers(team_id, season=None):
     """
     獲取球隊投手列表
 
     Args:
         team_id (int): 球隊ID
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用當前年份
 
     Returns:
         list: 投手列表
     """
+    # 如果沒有提供賽季，使用當前年份
+    if season is None:
+        season = datetime.now().year
+
     url = f"https://statsapi.mlb.com/api/v1/teams/{team_id}/roster?season={season}"
     response = requests.get(url).json()
 
@@ -194,17 +203,21 @@ def get_game_details(game_id):
         }
 
 
-def get_batter_season_stats(player_id, season):
+def get_batter_season_stats(player_id, season=None):
     """
     獲取球員賽季打擊數據
 
     Args:
         player_id (int): 球員ID
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用當前年份
 
     Returns:
-        tuple: (打擊率, 上壘率, 長打率, OPS)
+        tuple: (打擊率, 上壘率, 長打率, OPS, BABIP, AB/HR)
     """
+    # 如果沒有提供賽季，使用當前年份
+    if season is None:
+        season = datetime.now().year
+
     url = f"https://statsapi.mlb.com/api/v1/people/{player_id}/stats?stats=season&season={season}&group=hitting"
     response = requests.get(url).json()
     stats = response.get("stats", [])
@@ -212,26 +225,32 @@ def get_batter_season_stats(player_id, season):
     if stats and stats[0].get("splits"):
         data = stats[0]["splits"][0]["stat"]
         return (
-            data.get("avg", 0),  # 打擊率 AVG
-            data.get("obp", 0),  # 上壘率 OBP
-            data.get("slg", 0),  # 長打率 SLG
-            data.get("ops", 0),  # OPS
+            data.get("avg", None),  # 打擊率 AVG
+            data.get("obp", None),  # 上壘率 OBP
+            data.get("slg", None),  # 長打率 SLG
+            data.get("ops", None),  # OPS
+            data.get("babip", None),  # 打球落地安打率 BABIP
+            data.get("atBatsPerHomeRun", None),  # 每全壘打打數 AB/HR
         )
 
-    return (0, 0, 0, 0)  # 沒有數據時返回0
+    return (None, None, None, None, None, None)  # 沒有數據時返回None
 
 
-def get_pitcher_season_stats(pitcher_id, season):
+def get_pitcher_season_stats(pitcher_id, season=None):
     """
     獲取投手賽季數據
 
     Args:
         pitcher_id (int): 投手ID
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用當前年份
 
     Returns:
-        tuple: (打者面對打擊率, OPS, ERA, WHIP)
+        tuple: (打者面對打擊率, OPS, ERA, WHIP, K/9, BB/9, H/9, HR/9)
     """
+    # 如果沒有提供賽季，使用當前年份
+    if season is None:
+        season = datetime.now().year
+
     url = f"https://statsapi.mlb.com/api/v1/people/{pitcher_id}/stats?stats=season&season={season}&group=pitching"
     response = requests.get(url).json()
     stats = response.get("stats", [])
@@ -239,27 +258,35 @@ def get_pitcher_season_stats(pitcher_id, season):
     if stats and stats[0].get("splits"):
         data = stats[0]["splits"][0]["stat"]
         return (
-            data.get("avg", 0),  # 打者面對打擊率 AVG
-            data.get("ops", 0),  # 打者面對OPS
-            data.get("era", 0),  # 防禦率 ERA
-            data.get("whip", 0),  # 每局被上壘率 WHIP
+            data.get("avg", None),  # 打者面對打擊率 AVG
+            data.get("ops", None),  # 打者面對OPS
+            data.get("era", None),  # 防禦率 ERA
+            data.get("whip", None),  # 每局被上壘率 WHIP
+            data.get("strikeoutsPer9Inn", None),  # 每九局三振數 K/9
+            data.get("walksPer9Inn", None),  # 每九局保送數 BB/9
+            data.get("hitsPer9Inn", None),  # 每九局被安打數 H/9
+            data.get("homeRunsPer9", None),  # 每九局被全壘打數 HR/9
         )
 
-    return (0, 0, 0, 0)  # 沒有數據時返回0
+    return (None, None, None, None, None, None, None, None)  # 沒有數據時返回None
 
 
-def get_player_recent_games(player_id, season=2025, games_count=5):
+def get_player_recent_games(player_id, season=None, games_count=5):
     """
     獲取球員最近幾場比賽的打擊數據並計算平均值
 
     Args:
         player_id (int): 球員ID
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用當前年份
         games_count (int): 要計算的比賽場數
 
     Returns:
         tuple: (球員ID, 平均打擊率, 平均上壘率, 平均長打率, 平均OPS)
     """
+    # 如果沒有提供賽季，使用當前年份
+    if season is None:
+        season = datetime.now().year
+
     url = f"https://statsapi.mlb.com/api/v1/people/{player_id}/stats?stats=gameLog&season={season}&gameType=S,R&group=hitting"
     response = requests.get(url).json()
     stats = response.get("stats", [])
@@ -348,13 +375,14 @@ def get_batter_situation_stats(batter_id, situation_code, season=None):
     Args:
         batter_id (int): Batter MLB ID
         situation_code (str): Situation code (vr/vl)
-        season (int): Season year (defaults to previous season)
+        season (int, optional): Season year, defaults to previous season if None
 
     Returns:
         dict: Contains AVG, OBP, SLG, OPS or None if not available
     """
     if season is None:
-        season = datetime.now().year - 1  # Default to previous season
+        # Default to current season rather than previous
+        season = datetime.now().year
 
     url = f"https://statsapi.mlb.com/api/v1/people/{batter_id}/stats?stats=statSplits&season={season}&group=hitting&sitCodes={situation_code}"
 
@@ -388,13 +416,14 @@ def get_pitcher_situation_stats(pitcher_id, situation_code, season=None):
     Args:
         pitcher_id (int): Pitcher MLB ID
         situation_code (str): Situation code (vr/vl/risp)
-        season (int): Season year (defaults to previous season)
+        season (int, optional): Season year, defaults to current season if None
 
     Returns:
         dict: Contains AVG, OBP, SLG, OPS allowed or None if not available
     """
     if season is None:
-        season = datetime.now().year - 1  # Default to previous season
+        # Default to current season rather than previous
+        season = datetime.now().year
 
     url = f"https://statsapi.mlb.com/api/v1/people/{pitcher_id}/stats?stats=statSplits&season={season}&group=pitching&sitCodes={situation_code}"
 
@@ -421,17 +450,21 @@ def get_pitcher_situation_stats(pitcher_id, situation_code, season=None):
     return None
 
 
-def get_pitcher_sabermetrics(pitcher_id, season):
+def get_pitcher_sabermetrics(pitcher_id, season=None):
     """
     獲取投手進階數據 (Sabermetrics)
 
     Args:
         pitcher_id (int): 投手ID
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用當前年份
 
     Returns:
-        tuple: (FIP, FIP-, WAR, ERA-)
+        tuple: (FIP, FIP-, WAR, ERA-, xFIP, ra9WAR, RAR, EXLI)
     """
+    # 如果沒有提供賽季，使用當前年份
+    if season is None:
+        season = datetime.now().year
+
     url = f"https://statsapi.mlb.com/api/v1/people/{pitcher_id}/stats?stats=sabermetrics&season={season}&group=pitching"
     response = requests.get(url).json()
     stats = response.get("stats", [])
@@ -439,26 +472,34 @@ def get_pitcher_sabermetrics(pitcher_id, season):
     if stats and stats[0].get("splits"):
         data = stats[0]["splits"][0]["stat"]
         return (
-            data.get("fip", 0),  # 獨立防禦率 FIP
-            data.get("fipMinus", 0),  # FIP- (FIP相對於聯盟平均)
-            data.get("war", 0),  # 貢獻勝場數 WAR
-            data.get("eraMinus", 0),  # ERA- (ERA相對於聯盟平均)
+            data.get("fip", None),  # 獨立防禦率 FIP
+            data.get("fipMinus", None),  # FIP- (FIP相對於聯盟平均)
+            data.get("war", None),  # 貢獻勝場數 WAR
+            data.get("eraMinus", None),  # ERA- (ERA相對於聯盟平均)
+            data.get("xfip", None),  # 預期獨立防禦率 xFIP
+            data.get("ra9War", None),  # RA9-based WAR
+            data.get("rar", None),  # Runs Above Replacement
+            data.get("exli", None),  # Exited Leverage Index
         )
 
-    return (0, 0, 0, 0)  # 沒有數據時返回0
+    return (None, None, None, None, None, None, None, None)  # 沒有數據時返回0
 
 
-def get_batter_sabermetrics(batter_id, season):
+def get_batter_sabermetrics(batter_id, season=None):
     """
     獲取打者進階數據 (Sabermetrics)
 
     Args:
         batter_id (int): 打者ID
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用當前年份
 
     Returns:
-        tuple: (wRC, wRC+, WAR)
+        tuple: (wRC, wRC+, WAR, wOBA, wRAA, Batting, Spd, UBR)
     """
+    # 如果沒有提供賽季，使用當前年份
+    if season is None:
+        season = datetime.now().year
+
     url = f"https://statsapi.mlb.com/api/v1/people/{batter_id}/stats?stats=sabermetrics&season={season}&group=batting"
     response = requests.get(url).json()
     stats = response.get("stats", [])
@@ -466,9 +507,14 @@ def get_batter_sabermetrics(batter_id, season):
     if stats and stats[0].get("splits"):
         data = stats[0]["splits"][0]["stat"]
         return (
-            data.get("wRc", 0),  # 加權創造得分 wRC
-            data.get("wRcPlus", 0),  # wRC+ (相對於聯盟平均)
-            data.get("war", 0),  # 貢獻勝場數 WAR
+            data.get("wRc", None),  # 加權創造得分 wRC
+            data.get("wRcPlus", None),  # wRC+ (相對於聯盟平均)
+            data.get("war", None),  # 貢獻勝場數 WAR
+            data.get("woba", None),  # 準確代表攻擊價值 wOBA
+            data.get("wRaa", None),  # 真實得分貢獻 wRAA
+            data.get("batting", None),  # WAR 中的打擊貢獻
+            data.get("spd", None),  # 評估打者速度 Spd
+            data.get("ubr", None),  # 非盜壘跑壘表現 UBR
         )
 
-    return (0, 0, 0)  # 沒有數據時返回0
+    return (None, None, None, None, None, None, None, None)  # 沒有數據時返回None

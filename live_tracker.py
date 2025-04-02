@@ -376,6 +376,24 @@ if st.session_state.active_tab == "Live Score Tracker":
         # Save the selected game ID to session state
         st.session_state.selected_game_id = game_id
 
+        # Get the live data
+        with st.spinner("Fetching MLB data..."):
+            score_data = get_live_data(game_id)
+
+        # Store current pitcher and batter IDs in session state if in live game
+        if score_data and score_data.get("abstract_game_state") == "Live":
+            if score_data.get("pitcher_id"):
+                st.session_state.current_pitcher_id = score_data["pitcher_id"]
+                st.session_state.current_pitcher_name = score_data.get(
+                    "pitcher", "Unknown Pitcher"
+                )
+
+            if score_data.get("batter_id"):
+                st.session_state.current_batter_id = score_data["batter_id"]
+                st.session_state.current_batter_name = score_data.get(
+                    "batter", "Unknown Batter"
+                )
+
         # Call the main display function to show the game information
         main_display(
             game_id,
@@ -395,6 +413,16 @@ if st.session_state.active_tab == "Live Score Tracker":
             get_pitcher_sabermetrics if API_IMPORTS_SUCCESS else None,
             get_batter_sabermetrics if API_IMPORTS_SUCCESS else None,
         )
+
+        # Add DeepSeek analysis section for live games
+        if (
+            score_data
+            and score_data.get("abstract_game_state") == "Live"
+            and API_IMPORTS_SUCCESS
+        ):
+            from ui_components import add_deepseek_analysis_to_live_tracker
+
+            add_deepseek_analysis_to_live_tracker()
 
 # TAB 2: BATTER VS. PITCHER ANALYSIS
 elif st.session_state.active_tab == "Batter vs. Pitcher Analysis":

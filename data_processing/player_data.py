@@ -4,6 +4,7 @@
 """
 
 import time
+from datetime import datetime
 from config.team_config import MLB_TEAMS
 from database.db_operations import clear_table, insert_or_replace_data
 from api.mlb_api import (
@@ -14,21 +15,25 @@ from api.mlb_api import (
 )
 
 
-def update_player_season_data(season=2024):
+def update_player_season_data(season=None):
     """
     更新所有球員的賽季數據
 
     Args:
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用前一年的數據
     """
+    # 如果沒有提供賽季，使用前一年的數據
+    if season is None:
+        season = datetime.now().year - 1
+
     # 清空原先的數據
     clear_table("player_season_stats")
 
     for team_name, team_id in MLB_TEAMS.items():
         print(f"📥 更新 {season} 年球隊名單: {team_name}")
 
-        # 獲取隊伍球員名單
-        players = get_team_roster(team_id, season=season + 1)  # 使用下一年的名單
+        # 獲取隊伍球員名單 - 使用當前年份的名單
+        players = get_team_roster(team_id, season=datetime.now().year)
 
         for player in players:
             player_id = player["player_id"]
@@ -57,14 +62,18 @@ def update_player_season_data(season=2024):
     print(f"✅ {season} 年數據更新完成！")
 
 
-def update_player_recent_data(games_count=5, season=2025):
+def update_player_recent_data(games_count=5, season=None):
     """
     更新所有球員的最近比賽數據
 
     Args:
         games_count (int): 要分析的最近比賽場數
-        season (int): 賽季年份
+        season (int, optional): 賽季年份，若不提供則使用當前年份
     """
+    # 如果沒有提供賽季，使用當前年份
+    if season is None:
+        season = datetime.now().year
+
     # 清空原先的數據
     clear_table("player_recent_stats")
 

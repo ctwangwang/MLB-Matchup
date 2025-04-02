@@ -1,11 +1,13 @@
+# API keys and sensitive configuration
+config/api_keys.py
+
 # 忽略 Python 虛擬環境
 venv/
 __pycache__/
 Backup/
 Document/
 
-# 忽略 SQLite 資料庫
-#mlb_data/mlb_2024.db
+
 
 # 忽略 VSCode 設定
 .vscode/

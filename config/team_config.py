@@ -39,4 +39,4 @@ MLB_TEAMS = {
 
 # 數據儲存配置
 DATA_DIR = "mlb_data"
-DB_NAME = "mlb_2024.db"
+DB_NAME = "mlb.db"

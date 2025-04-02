@@ -1,37 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
-
-
-# Helper functions for safe type conversion
-def convert_stat_to_float(value):
-    """Safely convert a stat value to float"""
-    if value is None:
-        return 0.0
-
-    try:
-        if isinstance(value, str):
-            # Handle any potential commas in string numbers
-            value = value.replace(",", "")
-
-        return float(value)
-    except (ValueError, TypeError):
-        return 0.0
-
-
-def convert_stat_to_int(value):
-    """Safely convert a stat value to integer"""
-    if value is None:
-        return 0
-
-    try:
-        if isinstance(value, str):
-            # Handle any potential commas in string numbers
-            value = value.replace(",", "")
-
-        return int(float(value))
-    except (ValueError, TypeError):
-        return 0
+import time
 
 
 def switch_to_analysis_tab(pitcher_id, team_id, pitcher_name, team_name):
@@ -145,11 +115,11 @@ def main_display(
         <div class="score-container">
             <div class="team-score">
                 <div class="team-name">{score_data["away_team"]}</div>
-                <div class="score-value">{score_data.get("away_score", 0)}</div>
+                <div class="score-value">{score_data["away_score"]}</div>
             </div>
             <div class="team-score">
                 <div class="team-name">{score_data["home_team"]}</div>
-                <div class="score-value">{score_data.get("home_score", 0)}</div>
+                <div class="score-value">{score_data["home_score"]}</div>
             </div>
         </div>
         """,
@@ -158,10 +128,10 @@ def main_display(
 
         # Display game status information
         status_color = (
-            "green" if score_data.get("abstract_game_state") == "Live" else "orange"
+            "green" if score_data["abstract_game_state"] == "Live" else "orange"
         )
         st.markdown(
-            f"<p style='text-align: center; color: {status_color};'><b>Status:</b> {score_data.get('status', 'Unknown')}</p>",
+            f"<p style='text-align: center; color: {status_color};'><b>Status:</b> {score_data['status']}</p>",
             unsafe_allow_html=True,
         )
 
@@ -181,7 +151,7 @@ def main_display(
                 score_data["probable_home_pitcher_id"],
                 score_data["away_team_id"],  # Away team's batters against home pitcher
                 score_data["probable_home_pitcher"],
-                score_data["home_team"],
+                score_data["away_team"],
             )
 
         def analyze_current_pitcher():
@@ -209,9 +179,9 @@ def main_display(
             )
 
         # Add analyze buttons for pitchers
-        if score_data.get("abstract_game_state") == "Preview":
+        if score_data["abstract_game_state"] == "Preview":
             # Show scheduled start time
-            if score_data.get("start_time"):
+            if score_data["start_time"]:
                 local_time = score_data["start_time"].astimezone()
                 st.markdown(
                     f"<p style='text-align: center;'><b>Scheduled Start:</b> {local_time.strftime('%Y-%m-%d %H:%M:%S %Z')}</p>",
@@ -224,55 +194,6 @@ def main_display(
             ):
                 st.subheader("Probable Pitchers")
 
-                # Add color legend explaining what each color means
-                st.markdown(
-                    """
-                    <style>
-                    .color-legend {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 12px;
-                        margin-bottom: 10px;
-                        font-size: 0.85em;
-                    }
-                    .color-item {
-                        display: flex;
-                        align-items: center;
-                    }
-                    .color-dot {
-                        width: 12px;
-                        height: 12px;
-                        border-radius: 50%;
-                        margin-right: 5px;
-                        display: inline-block;
-                    }
-                    </style>
-                    <div class="color-legend">
-                        <div class="color-item">
-                            <span class="color-dot" style="background-color: red;"></span>
-                            <span>MVP</span>
-                        </div>
-                        <div class="color-item">
-                            <span class="color-dot" style="background-color: #EE82EE;"></span>
-                            <span>All-Star</span>
-                        </div>
-                        <div class="color-item">
-                            <span class="color-dot" style="background-color: #4169e1;"></span>
-                            <span>Starter</span>
-                        </div>
-                        <div class="color-item">
-                            <span class="color-dot" style="background-color: green;"></span>
-                            <span>Role Player</span>
-                        </div>
-                        <div class="color-item">
-                            <span class="color-dot" style="background-color: #F4A460;"></span>
-                            <span>Replacement Level</span>
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
                 away_pitcher = score_data.get("probable_away_pitcher") or "TBD"
                 home_pitcher = score_data.get("probable_home_pitcher") or "TBD"
 
@@ -280,80 +201,6 @@ def main_display(
 
                 with col_away:
                     st.markdown(f"**{score_data['away_team']}:** {away_pitcher}")
-
-                    # Display away pitcher stats with safe type conversion
-                    if API_IMPORTS_SUCCESS and score_data.get(
-                        "probable_away_pitcher_id"
-                    ):
-                        try:
-                            pitcher_stats = get_pitcher_season_stats(
-                                score_data["probable_away_pitcher_id"], previous_season
-                            )
-
-                            if pitcher_stats:
-                                # Safely convert values to float
-                                avg = convert_stat_to_float(pitcher_stats[0])
-                                ops = convert_stat_to_float(pitcher_stats[1])
-                                era = convert_stat_to_float(pitcher_stats[2])
-                                whip = convert_stat_to_float(pitcher_stats[3])
-
-                                st.markdown(f"**{previous_season} Season Stats:**")
-                                stats_df = pd.DataFrame(
-                                    {
-                                        "Stat": ["ERA", "WHIP", "AVG", "OPS"],
-                                        "Value": [
-                                            f"{era:.2f}",
-                                            f"{whip:.2f}",
-                                            f"{avg:.3f}",
-                                            f"{ops:.3f}",
-                                        ],
-                                    }
-                                )
-                                st.dataframe(
-                                    stats_df, hide_index=True, use_container_width=True
-                                )
-
-                                # Advanced metrics with safe conversion
-                                if get_pitcher_sabermetrics:
-                                    try:
-                                        sabermetrics = get_pitcher_sabermetrics(
-                                            score_data["probable_away_pitcher_id"],
-                                            previous_season,
-                                        )
-
-                                        if sabermetrics:
-                                            fip_minus = convert_stat_to_int(
-                                                sabermetrics[1]
-                                            )
-                                            WAR = convert_stat_to_float(sabermetrics[2])
-
-                                            # Use HTML for layout instead of nested columns
-                                            st.markdown(
-                                                f"""
-                                                <div style='display: flex; justify-content: space-between; margin-bottom: 10px;'>
-                                                    <div style='text-align: center; width: 48%;'>
-                                                        <p style='margin-bottom: 0;'>FIP-</p>
-                                                        <div style='background-color: {get_fip_minus_color(fip_minus)}; 
-                                                        padding: 5px; border-radius: 5px; color: white; font-weight: bold;'>
-                                                        {fip_minus}</div>
-                                                    </div>
-                                                    <div style='text-align: center; width: 48%;'>
-                                                        <p style='margin-bottom: 0;'>WAR</p>
-                                                        <div style='background-color: {get_pitcher_war_color(WAR)}; 
-                                                        padding: 5px; border-radius: 5px; color: white; font-weight: bold;'>
-                                                        {WAR:.1f}</div>
-                                                    </div>
-                                                </div>
-                                                """,
-                                                unsafe_allow_html=True,
-                                            )
-                                    except Exception as e:
-                                        st.warning(
-                                            f"Could not load advanced metrics: {e}"
-                                        )
-                        except Exception as e:
-                            st.warning(f"Could not load pitcher stats: {e}")
-
                     if score_data.get("probable_away_pitcher_id"):
                         if st.button(
                             f"Analyze {score_data['home_team']} batters vs {away_pitcher}",
@@ -365,80 +212,6 @@ def main_display(
 
                 with col_home:
                     st.markdown(f"**{score_data['home_team']}:** {home_pitcher}")
-
-                    # Display home pitcher stats with safe type conversion
-                    if API_IMPORTS_SUCCESS and score_data.get(
-                        "probable_home_pitcher_id"
-                    ):
-                        try:
-                            pitcher_stats = get_pitcher_season_stats(
-                                score_data["probable_home_pitcher_id"], previous_season
-                            )
-
-                            if pitcher_stats:
-                                # Safely convert values to float
-                                avg = convert_stat_to_float(pitcher_stats[0])
-                                ops = convert_stat_to_float(pitcher_stats[1])
-                                era = convert_stat_to_float(pitcher_stats[2])
-                                whip = convert_stat_to_float(pitcher_stats[3])
-
-                                st.markdown(f"**{previous_season} Season Stats:**")
-                                stats_df = pd.DataFrame(
-                                    {
-                                        "Stat": ["ERA", "WHIP", "AVG", "OPS"],
-                                        "Value": [
-                                            f"{era:.2f}",
-                                            f"{whip:.2f}",
-                                            f"{avg:.3f}",
-                                            f"{ops:.3f}",
-                                        ],
-                                    }
-                                )
-                                st.dataframe(
-                                    stats_df, hide_index=True, use_container_width=True
-                                )
-
-                                # Advanced metrics with safe conversion
-                                if get_pitcher_sabermetrics:
-                                    try:
-                                        sabermetrics = get_pitcher_sabermetrics(
-                                            score_data["probable_home_pitcher_id"],
-                                            previous_season,
-                                        )
-
-                                        if sabermetrics:
-                                            fip_minus = convert_stat_to_int(
-                                                sabermetrics[1]
-                                            )
-                                            WAR = convert_stat_to_float(sabermetrics[2])
-
-                                            # Use HTML for layout instead of nested columns
-                                            st.markdown(
-                                                f"""
-                                                <div style='display: flex; justify-content: space-between; margin-bottom: 10px;'>
-                                                    <div style='text-align: center; width: 48%;'>
-                                                        <p style='margin-bottom: 0;'>FIP-</p>
-                                                        <div style='background-color: {get_fip_minus_color(fip_minus)}; 
-                                                        padding: 5px; border-radius: 5px; color: white; font-weight: bold;'>
-                                                        {fip_minus}</div>
-                                                    </div>
-                                                    <div style='text-align: center; width: 48%;'>
-                                                        <p style='margin-bottom: 0;'>WAR</p>
-                                                        <div style='background-color: {get_pitcher_war_color(WAR)}; 
-                                                        padding: 5px; border-radius: 5px; color: white; font-weight: bold;'>
-                                                        {WAR:.1f}</div>
-                                                    </div>
-                                                </div>
-                                                """,
-                                                unsafe_allow_html=True,
-                                            )
-                                    except Exception as e:
-                                        st.warning(
-                                            f"Could not load advanced metrics: {e}"
-                                        )
-                        except Exception as e:
-                            st.warning(f"Could not load pitcher stats: {e}")
-
                     if score_data.get("probable_home_pitcher_id"):
                         if st.button(
                             f"Analyze {score_data['away_team']} batters vs {home_pitcher}",
@@ -448,10 +221,10 @@ def main_display(
                             # The on_click handler does the work
                             pass
 
-        elif score_data.get("abstract_game_state") == "Live":
+        elif score_data["abstract_game_state"] == "Live":
             # Show inning information
             st.markdown(
-                f"<p style='text-align: center;'><b>Inning:</b> {score_data.get('inning_state', '')} of {score_data.get('inning', '')}</p>",
+                f"<p style='text-align: center;'><b>Inning:</b> {score_data['inning_state']} of {score_data['inning']}</p>",
                 unsafe_allow_html=True,
             )
 
@@ -459,14 +232,14 @@ def main_display(
             st.subheader("Box Score")
 
             # Set up DataFrame for box score
-            inning_data = score_data.get("inning_scores", [])
+            inning_data = score_data["inning_scores"]
 
             # Format the DataFrame
             box_score = pd.DataFrame(
                 {
                     "Team": [
-                        score_data.get("away_team_abbrev", "AWAY"),
-                        score_data.get("home_team_abbrev", "HOME"),
+                        score_data["away_team_abbrev"],
+                        score_data["home_team_abbrev"],
                     ],
                 }
             )
@@ -474,10 +247,14 @@ def main_display(
             # Add innings columns with proper type handling
             for i in range(1, 10):
                 inning_col = f"{i}"
-                inning_entry = inning_data[i - 1] if i <= len(inning_data) else {}
+                inning_data = (
+                    score_data["inning_scores"][i - 1]
+                    if i <= len(score_data["inning_scores"])
+                    else {}
+                )
 
-                away_val = inning_entry.get("away", "-")
-                home_val = inning_entry.get("home", "-")
+                away_val = inning_data.get("away", "-")
+                home_val = inning_data.get("home", "-")
 
                 # Ensure values are either integers or strings
                 try:
@@ -491,8 +268,12 @@ def main_display(
 
             # Add R (Runs) column with proper type handling
             box_score["R"] = [
-                score_data.get("away_score", 0),
-                score_data.get("home_score", 0),
+                int(score_data["away_score"])
+                if str(score_data["away_score"]).isdigit()
+                else "-",
+                int(score_data["home_score"])
+                if str(score_data["home_score"]).isdigit()
+                else "-",
             ]
 
             # Convert all numeric columns to object type to avoid Arrow serialization issues
@@ -516,10 +297,11 @@ def main_display(
             st.dataframe(
                 box_score, hide_index=True, use_container_width=True, height=130
             )
-
             # Display current play information in a fixed-height container
-            current_play_info = score_data.get(
-                "current_play", "No play information available"
+            current_play_info = (
+                score_data["current_play"]
+                if isinstance(score_data["current_play"], str)
+                else "No play information available"
             )
 
             st.subheader("Current Play")
@@ -534,8 +316,16 @@ def main_display(
             )
 
             # Display pitcher and batter information in fixed containers
-            pitcher_info = score_data.get("pitcher", "Not available")
-            batter_info = score_data.get("batter", "Not available")
+            pitcher_info = (
+                score_data["pitcher"]
+                if score_data["pitcher"] != "N/A"
+                else "Not available"
+            )
+            batter_info = (
+                score_data["batter"]
+                if score_data["batter"] != "N/A"
+                else "Not available"
+            )
 
             st.markdown(
                 f"""
@@ -571,6 +361,7 @@ def main_display(
             """,
                 unsafe_allow_html=True,
             )
+            # In the main_display function in ui_components.py
 
             # Current Pitcher and Batter section
             if score_data.get("pitcher_id") and score_data.get("batter_id"):
@@ -624,7 +415,6 @@ def main_display(
                     """,
                     unsafe_allow_html=True,
                 )
-
                 # Determine which team the pitcher and batter belong to
                 if score_data.get("inning_half") == "top":
                     pitcher_team = score_data["home_team"]
@@ -637,105 +427,102 @@ def main_display(
                 st.subheader("Current Pitcher")
                 st.markdown(f"{pitcher_team} : {score_data['pitcher']}")
 
-                # Add pitcher season stats with safe type conversion
+                # Add pitcher season stats
                 if (
                     API_IMPORTS_SUCCESS
                     and get_pitcher_season_stats
                     and get_pitcher_sabermetrics
                 ):
-                    try:
-                        pitcher_id = score_data["pitcher_id"]
-                        pitcher_stats = get_pitcher_season_stats(
-                            pitcher_id, previous_season
+                    pitcher_id = score_data["pitcher_id"]
+                    pitcher_stats = get_pitcher_season_stats(
+                        pitcher_id, previous_season
+                    )
+                    pitcher_saber = get_pitcher_sabermetrics(
+                        pitcher_id, previous_season
+                    )
+
+                    if pitcher_stats or pitcher_saber:
+                        st.markdown(
+                            f"**{score_data['pitcher']}'s Season {previous_season} Stats:**"
                         )
-                        pitcher_saber = get_pitcher_sabermetrics(
-                            pitcher_id, previous_season
+
+                        # Process values for color coding
+                        era_val = (
+                            f"{float(pitcher_stats[2]):.2f}"
+                            if pitcher_stats and pitcher_stats[2] is not None
+                            else "-"
+                        )
+                        whip_val = (
+                            f"{float(pitcher_stats[3]):.2f}"
+                            if pitcher_stats and pitcher_stats[3] is not None
+                            else "-"
                         )
 
-                        if pitcher_stats or pitcher_saber:
-                            st.markdown(
-                                f"**{score_data['pitcher']}'s Season {previous_season} Stats:**"
-                            )
+                        fip_minus_val = (
+                            int(pitcher_saber[1])
+                            if pitcher_saber and pitcher_saber[1] is not None
+                            else "-"
+                        )
+                        fip_minus_color = (
+                            get_fip_minus_color(fip_minus_val)
+                            if fip_minus_val != "-"
+                            else "black"
+                        )
 
-                            # Process values for color coding - with safe conversion
-                            era = (
-                                convert_stat_to_float(pitcher_stats[2])
-                                if pitcher_stats
-                                else 0.0
-                            )
-                            whip = (
-                                convert_stat_to_float(pitcher_stats[3])
-                                if pitcher_stats
-                                else 0.0
-                            )
-                            era_val = f"{era:.2f}"
-                            whip_val = f"{whip:.2f}"
+                        war_val = (
+                            float(pitcher_saber[2])
+                            if pitcher_saber and pitcher_saber[2] is not None
+                            else "-"
+                        )
+                        war_display = f"{war_val:.1f}" if war_val != "-" else "-"
+                        war_color = (
+                            get_pitcher_war_color(war_val)
+                            if war_val != "-"
+                            else "black"
+                        )
 
-                            fip_minus = (
-                                convert_stat_to_int(pitcher_saber[1])
-                                if pitcher_saber and pitcher_saber[1]
-                                else "-"
-                            )
-                            fip_minus_color = (
-                                get_fip_minus_color(fip_minus)
-                                if fip_minus != "-"
-                                else "black"
-                            )
+                        # Use HTML to display colored values
+                        st.markdown(
+                            f"""
+                        <style>
+                        .stats-table {{
+                            width: 100%;
+                            text-align: center;
+                            border-collapse: collapse;
+                            margin-bottom: 15px;
+                        }}
+                        .stats-table th {{
+                            padding: 8px;
+                            background-color: #2c3e50;  /* Dark blue header */
+                            color: white;
+                            font-weight: bold;
+                            border: 1px solid #555;
+                        }}
+                        .stats-table td {{
+                            padding: 8px;
+                            border: 1px solid #555;
+                            background-color: #1e2933;  /* Slightly lighter than the main background */
+                        }}
+                        </style>
+                        <table class="stats-table">
+                            <tr>
+                                <th>ERA</th>
+                                <th>WHIP</th>
+                                <th>FIP-</th>
+                                <th>WAR</th>
+                            </tr>
+                            <tr>
+                                <td>{era_val}</td>
+                                <td>{whip_val}</td>
+                                <td style="color: {fip_minus_color}; font-weight: bold;">{fip_minus_val}</td>
+                                <td style="color: {war_color}; font-weight: bold;">{war_display}</td>
+                            </tr>
+                        </table>
+                        """,
+                            unsafe_allow_html=True,
+                        )
 
-                            war = (
-                                convert_stat_to_float(pitcher_saber[2])
-                                if pitcher_saber and pitcher_saber[2]
-                                else "-"
-                            )
-                            war_display = f"{war:.1f}" if war != "-" else "-"
-                            war_color = (
-                                get_pitcher_war_color(war) if war != "-" else "black"
-                            )
-
-                            # Use HTML to display colored values
-                            st.markdown(
-                                f"""
-                            <style>
-                            .stats-table {{
-                                width: 100%;
-                                text-align: center;
-                                border-collapse: collapse;
-                                margin-bottom: 15px;
-                            }}
-                            .stats-table th {{
-                                padding: 8px;
-                                background-color: #2c3e50;  /* Dark blue header */
-                                color: white;
-                                font-weight: bold;
-                                border: 1px solid #555;
-                            }}
-                            .stats-table td {{
-                                padding: 8px;
-                                border: 1px solid #555;
-                                background-color: #1e2933;  /* Slightly lighter than the main background */
-                            }}
-                            </style>
-                            <table class="stats-table">
-                                <tr>
-                                    <th>ERA</th>
-                                    <th>WHIP</th>
-                                    <th>FIP-</th>
-                                    <th>WAR</th>
-                                </tr>
-                                <tr>
-                                    <td>{era_val}</td>
-                                    <td>{whip_val}</td>
-                                    <td style="color: {fip_minus_color}; font-weight: bold;">{fip_minus}</td>
-                                    <td style="color: {war_color}; font-weight: bold;">{war_display}</td>
-                                </tr>
-                            </table>
-                            """,
-                                unsafe_allow_html=True,
-                            )
-                    except Exception as e:
-                        st.warning(f"Could not load pitcher stats: {e}")
-
-                # Batter info and stats with safe type conversion
+                # Batter info and stats
                 st.subheader("Current Batter")
                 st.markdown(f"{batter_team} : {score_data['batter']}")
 
@@ -745,132 +532,172 @@ def main_display(
                     and get_batter_season_stats
                     and get_batter_sabermetrics
                 ):
-                    try:
-                        batter_id = score_data.get("batter_id")
-                        batter_name = score_data["batter"]
+                    batter_id = score_data.get("batter_id")
+                    batter_name = score_data["batter"]
 
-                        # Get current season stats for the batter
-                        season_stats = None
-                        saber_stats = None
-                        if batter_id:
-                            season_stats = get_batter_season_stats(
-                                batter_id, previous_season
-                            )
-                            saber_stats = get_batter_sabermetrics(
-                                batter_id, previous_season
-                            )
+                    # Get current season stats for the batter
+                    season_stats = None
+                    saber_stats = None
+                    if batter_id:
+                        season_stats = get_batter_season_stats(
+                            batter_id, previous_season
+                        )
+                        saber_stats = get_batter_sabermetrics(
+                            batter_id, previous_season
+                        )
 
-                        # Display season stats for the batter
-                        if season_stats or saber_stats:
-                            st.markdown(
-                                f"**{batter_name}'s Season {previous_season} Stats:**"
-                            )
+                    # Display season stats for the batter
+                    if season_stats or saber_stats:
+                        st.markdown(
+                            f"**{batter_name}'s Season {previous_season} Stats:**"
+                        )
 
-                            # Process values for color coding - with safe conversion
-                            avg = (
-                                convert_stat_to_float(season_stats[0])
-                                if season_stats
-                                else 0.0
-                            )
-                            obp = (
-                                convert_stat_to_float(season_stats[1])
-                                if season_stats
-                                else 0.0
-                            )
-                            slg = (
-                                convert_stat_to_float(season_stats[2])
-                                if season_stats
-                                else 0.0
-                            )
-                            ops = (
-                                convert_stat_to_float(season_stats[3])
-                                if season_stats
-                                else 0.0
-                            )
+                        # Process values for color coding
+                        avg_val = (
+                            f"{float(season_stats[0]):.3f}"
+                            if season_stats and season_stats[0] is not None
+                            else "-"
+                        )
+                        obp_val = (
+                            f"{float(season_stats[1]):.3f}"
+                            if season_stats and season_stats[1] is not None
+                            else "-"
+                        )
+                        slg_val = (
+                            f"{float(season_stats[2]):.3f}"
+                            if season_stats and season_stats[2] is not None
+                            else "-"
+                        )
+                        ops_val = (
+                            f"{float(season_stats[3]):.3f}"
+                            if season_stats and season_stats[3] is not None
+                            else "-"
+                        )
 
-                            avg_val = f"{avg:.3f}"
-                            obp_val = f"{obp:.3f}"
-                            slg_val = f"{slg:.3f}"
-                            ops_val = f"{ops:.3f}"
+                        wrc_plus_val = (
+                            int(saber_stats[1])
+                            if saber_stats and saber_stats[1] is not None
+                            else "-"
+                        )
+                        wrc_plus_color = (
+                            get_wrc_plus_color(wrc_plus_val)
+                            if wrc_plus_val != "-"
+                            else "black"
+                        )
 
-                            wrc_plus = (
-                                convert_stat_to_int(saber_stats[1])
-                                if saber_stats and saber_stats[1]
-                                else 100
-                            )
-                            wrc_plus_color = get_wrc_plus_color(wrc_plus)
+                        war_val = (
+                            float(saber_stats[2])
+                            if saber_stats and saber_stats[2] is not None
+                            else "-"
+                        )
+                        war_display = f"{war_val:.1f}" if war_val != "-" else "-"
+                        war_color = (
+                            get_batter_war_color(war_val) if war_val != "-" else "black"
+                        )
 
-                            war = (
-                                convert_stat_to_float(saber_stats[2])
-                                if saber_stats and saber_stats[2]
-                                else 0.0
-                            )
-                            war_display = f"{war:.1f}"
-                            war_color = get_batter_war_color(war)
+                        # Use HTML to display colored values
+                        st.markdown(
+                            f"""
+                        <style>
+                        .stats-table {{
+                            width: 100%;
+                            text-align: center;
+                            border-collapse: collapse;
+                            margin-bottom: 15px;
+                        }}
+                        .stats-table th {{
+                            padding: 8px;
+                            background-color: #2c3e50;  /* Dark blue header */
+                            color: white;
+                            font-weight: bold;
+                            border: 1px solid #555;
+                        }}
+                        .stats-table td {{
+                            padding: 8px;
+                            border: 1px solid #555;
+                            background-color: #1e2933;  /* Slightly lighter than the main background */
+                        }}
+                        </style>
+                        <table class="stats-table">
+                            <tr>
+                                <th>AVG</th>
+                                <th>OBP</th>
+                                <th>SLG</th>
+                                <th>OPS</th>
+                                <th>wRC+</th>
+                                <th>WAR</th>
+                            </tr>
+                            <tr>
+                                <td>{avg_val}</td>
+                                <td>{obp_val}</td>
+                                <td>{slg_val}</td>
+                                <td>{ops_val}</td>
+                                <td style="color: {wrc_plus_color}; font-weight: bold;">{wrc_plus_val}</td>
+                                <td style="color: {war_color}; font-weight: bold;">{war_display}</td>
+                            </tr>
+                        </table>
+                        """,
+                            unsafe_allow_html=True,
+                        )
 
-                            # Use HTML to display colored values
-                            st.markdown(
-                                f"""
-                            <style>
-                            .stats-table {{
-                                width: 100%;
-                                text-align: center;
-                                border-collapse: collapse;
-                                margin-bottom: 15px;
-                            }}
-                            .stats-table th {{
-                                padding: 8px;
-                                background-color: #2c3e50;  /* Dark blue header */
-                                color: white;
-                                font-weight: bold;
-                                border: 1px solid #555;
-                            }}
-                            .stats-table td {{
-                                padding: 8px;
-                                border: 1px solid #555;
-                                background-color: #1e2933;  /* Slightly lighter than the main background */
-                            }}
-                            </style>
-                            <table class="stats-table">
-                                <tr>
-                                    <th>AVG</th>
-                                    <th>OBP</th>
-                                    <th>SLG</th>
-                                    <th>OPS</th>
-                                </tr>
-                                <tr>
-                                    <td>{avg_val}</td>
-                                    <td>{obp_val}</td>
-                                    <td>{slg_val}</td>
-                                    <td>{ops_val}</td>
-                                </tr>
-                            </table>
-                            """,
-                                unsafe_allow_html=True,
-                            )
+                # Matchup Stats section
+                st.header("Matchup Stats")
 
-                            # Display advanced metrics with HTML instead of nested columns
-                            st.markdown(
-                                f"""
-                                <div style='display: flex; justify-content: space-between; margin-bottom: 10px;'>
-                                    <div style='text-align: center; width: 48%;'>
-                                        <p style='margin-bottom: 0;'>wRC+</p>
-                                        <div style='background-color: {wrc_plus_color}; 
-                                        padding: 5px; border-radius: 5px; color: white; font-weight: bold;'>
-                                        {wrc_plus}</div>
-                                    </div>
-                                    <div style='text-align: center; width: 48%;'>
-                                        <p style='margin-bottom: 0;'>bWAR</p>
-                                        <div style='background-color: {war_color}; 
-                                        padding: 5px; border-radius: 5px; color: white; font-weight: bold;'>
-                                        {war_display}</div>
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-                    except Exception as e:
-                        st.warning(f"Could not load batter stats: {e}")
+                # Batter vs Pitcher matchup stats
+                if API_IMPORTS_SUCCESS:
+                    pitcher_id = score_data.get("pitcher_id")
+                    batter_id = score_data.get("batter_id")
+
+                    # Get matchup data
+                    matchup_stats = get_vs_pitcher_stats(batter_id, pitcher_id)
+
+                    if matchup_stats:
+                        st.markdown(
+                            f"**{score_data['batter']} vs {score_data['pitcher']} (Career)**"
+                        )
+                        st.markdown(
+                            f"""
+                        <style>
+                        .stats-table {{
+                            width: 100%;
+                            text-align: center;
+                            border-collapse: collapse;
+                            margin-bottom: 15px;
+                        }}
+                        .stats-table th {{
+                            padding: 8px;
+                            background-color: #2c3e50;  /* Dark blue header */
+                            color: white;
+                            font-weight: bold;
+                            border: 1px solid #555;
+                        }}
+                        .stats-table td {{
+                            padding: 8px;
+                            border: 1px solid #555;
+                            background-color: #1e2933;  /* Slightly lighter than the main background */
+                        }}
+                        </style>
+                        <table class="stats-table">
+                            <tr>
+                                <th>AVG</th>
+                                <th>OBP</th>
+                                <th>SLG</th>
+                                <th>OPS</th>
+                            </tr>
+                            <tr>
+                                <td>{avg_val}</td>
+                                <td>{obp_val}</td>
+                                <td>{slg_val}</td>
+                                <td>{ops_val}</td>
+                            </tr>
+                        </table>
+                        """,
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.info(
+                            f"No head-to-head matchup data available for {batter_name} vs {score_data['pitcher']}"
+                        )
 
                 # Analyze button
                 if st.button(
@@ -881,31 +708,257 @@ def main_display(
                     # The on_click handler does the work
                     pass
 
+            # Situation Stats display
+            if score_data.get("batter_situation") and score_data.get(
+                "pitcher_situation"
+            ):
+                st.header("Situation Statistics")
+
+                # Create columns - pitcher first, then batter
+                col_pitch, col_bat = st.columns(2)
+
+                with col_pitch:
+                    if score_data.get("pitcher_id"):
+                        # Pitcher vs Batter type stats
+                        if score_data.get("pitcher_situation"):
+                            pitcher_stats = get_pitcher_situation_stats(
+                                score_data["pitcher_id"],
+                                score_data["pitcher_situation"]["code"],
+                            )
+                            if pitcher_stats:
+                                st.markdown(
+                                    f"**{score_data['pitcher']} {score_data['pitcher_situation']['description']} (Season {pitcher_stats['season']})**"
+                                )
+                                st.markdown(
+                                    f"""
+                                <style>
+                                .stats-table {{
+                                    width: 100%;
+                                    text-align: center;
+                                    border-collapse: collapse;
+                                    margin-bottom: 15px;
+                                }}
+                                .stats-table th {{
+                                    padding: 8px;
+                                    background-color: #2c3e50;  /* Dark blue header */
+                                    color: white;
+                                    font-weight: bold;
+                                    border: 1px solid #555;
+                                }}
+                                .stats-table td {{
+                                    padding: 8px;
+                                    border: 1px solid #555;
+                                    background-color: #1e2933;  /* Slightly lighter than the main background */
+                                }}
+                                </style>
+                                <table class="stats-table">
+                                    <tr>
+                                        <th>AVG</th>
+                                        <th>OBP</th>
+                                        <th>SLG</th>
+                                        <th>OPS</th>
+                                    </tr>
+                                    <tr>
+                                        <td>{avg_val}</td>
+                                        <td>{obp_val}</td>
+                                        <td>{slg_val}</td>
+                                        <td>{ops_val}</td>
+                                    </tr>
+                                </table>
+                                """,
+                                    unsafe_allow_html=True,
+                                )
+                            else:
+                                st.info(
+                                    f"No stats available for {score_data['pitcher']} against current batter type"
+                                )
+
+                        # Pitcher menOnBase stats
+                        if score_data.get("men_on_base_situation"):
+                            pitcher_men_stats = get_pitcher_situation_stats(
+                                score_data["pitcher_id"],
+                                score_data["men_on_base_situation"]["code"],
+                            )
+                            if pitcher_men_stats:
+                                st.markdown(
+                                    f"**{score_data['pitcher']} when {score_data['men_on_base_situation']['description']} (Season {pitcher_men_stats['season']})**"
+                                )
+                                # In the situation stats section, modify the DataFrame creation to:
+                                st.markdown(
+                                    f"""
+                                <style>
+                                .stats-table {{
+                                    width: 100%;
+                                    text-align: center;
+                                    border-collapse: collapse;
+                                    margin-bottom: 15px;
+                                }}
+                                .stats-table th {{
+                                    padding: 8px;
+                                    background-color: #2c3e50;  /* Dark blue header */
+                                    color: white;
+                                    font-weight: bold;
+                                    border: 1px solid #555;
+                                }}
+                                .stats-table td {{
+                                    padding: 8px;
+                                    border: 1px solid #555;
+                                    background-color: #1e2933;  /* Slightly lighter than the main background */
+                                }}
+                                </style>
+                                <table class="stats-table">
+                                    <tr>
+                                        <th>AVG</th>
+                                        <th>OBP</th>
+                                        <th>SLG</th>
+                                        <th>OPS</th>
+                                    </tr>
+                                    <tr>
+                                        <td>{avg_val}</td>
+                                        <td>{obp_val}</td>
+                                        <td>{slg_val}</td>
+                                        <td>{ops_val}</td>
+                                    </tr>
+                                </table>
+                                """,
+                                    unsafe_allow_html=True,
+                                )
+                            else:
+                                st.info(
+                                    f"No stats available for {score_data['pitcher']} in current base situation"
+                                )
+
+                with col_bat:
+                    if score_data.get("batter_id"):
+                        # Batter vs Pitcher type stats
+                        if score_data.get("batter_situation"):
+                            batter_stats = get_batter_situation_stats(
+                                score_data["batter_id"],
+                                score_data["batter_situation"]["code"],
+                            )
+                            if batter_stats:
+                                st.markdown(
+                                    f"**{score_data['batter']} {score_data['batter_situation']['description']} (Season {batter_stats['season']})**"
+                                )
+                                # In the situation stats section, modify the DataFrame creation to:
+                                st.markdown(
+                                    f"""
+                                <style>
+                                .stats-table {{
+                                    width: 100%;
+                                    text-align: center;
+                                    border-collapse: collapse;
+                                    margin-bottom: 15px;
+                                }}
+                                .stats-table th {{
+                                    padding: 8px;
+                                    background-color: #2c3e50;  /* Dark blue header */
+                                    color: white;
+                                    font-weight: bold;
+                                    border: 1px solid #555;
+                                }}
+                                .stats-table td {{
+                                    padding: 8px;
+                                    border: 1px solid #555;
+                                    background-color: #1e2933;  /* Slightly lighter than the main background */
+                                }}
+                                </style>
+                                <table class="stats-table">
+                                    <tr>
+                                        <th>AVG</th>
+                                        <th>OBP</th>
+                                        <th>SLG</th>
+                                        <th>OPS</th>
+                                    </tr>
+                                    <tr>
+                                        <td>{avg_val}</td>
+                                        <td>{obp_val}</td>
+                                        <td>{slg_val}</td>
+                                        <td>{ops_val}</td>
+                                    </tr>
+                                </table>
+                                """,
+                                    unsafe_allow_html=True,
+                                )
+                            else:
+                                st.info(
+                                    f"No stats available for {score_data['batter']} against current pitcher type"
+                                )
+
+                        # Batter menOnBase stats
+                        if score_data.get("men_on_base_situation"):
+                            batter_men_stats = get_batter_situation_stats(
+                                score_data["batter_id"],
+                                score_data["men_on_base_situation"]["code"],
+                            )
+                            if batter_men_stats:
+                                st.markdown(
+                                    f"**{score_data['batter']} when {score_data['men_on_base_situation']['description']} (Season {batter_men_stats['season']})**"
+                                )
+                                # In the situation stats section, modify the DataFrame creation to:
+                                st.markdown(
+                                    f"""
+                                <style>
+                                .stats-table {{
+                                    width: 100%;
+                                    text-align: center;
+                                    border-collapse: collapse;
+                                    margin-bottom: 15px;
+                                }}
+                                .stats-table th {{
+                                    padding: 8px;
+                                    background-color: #2c3e50;  /* Dark blue header */
+                                    color: white;
+                                    font-weight: bold;
+                                    border: 1px solid #555;
+                                }}
+                                .stats-table td {{
+                                    padding: 8px;
+                                    border: 1px solid #555;
+                                    background-color: #1e2933;  /* Slightly lighter than the main background */
+                                }}
+                                </style>
+                                <table class="stats-table">
+                                    <tr>
+                                        <th>AVG</th>
+                                        <th>OBP</th>
+                                        <th>SLG</th>
+                                        <th>OPS</th>
+                                    </tr>
+                                    <tr>
+                                        <td>{avg_val}</td>
+                                        <td>{obp_val}</td>
+                                        <td>{slg_val}</td>
+                                        <td>{ops_val}</td>
+                                    </tr>
+                                </table>
+                                """,
+                                    unsafe_allow_html=True,
+                                )
+                            else:
+                                st.info(
+                                    f"No stats available for {score_data['batter']} in current base situation"
+                                )
     with col2:
         # Game situation visualization with fixed heights
-        if score_data.get("abstract_game_state") == "Live":
+        if score_data["abstract_game_state"] == "Live":
             st.header("Game Situation")
 
             # Get count and outs information safely
             balls = min(
-                int(score_data.get("balls", 0))
-                if isinstance(score_data.get("balls"), (int, str))
-                and str(score_data.get("balls")).isdigit()
+                int(score_data["balls"])
+                if score_data["balls"] not in [None, "-"]
                 else 0,
                 3,
             )
             strikes = min(
-                int(score_data.get("strikes", 0))
-                if isinstance(score_data.get("strikes"), (int, str))
-                and str(score_data.get("strikes")).isdigit()
+                int(score_data["strikes"])
+                if score_data["strikes"] not in [None, "-"]
                 else 0,
                 2,
             )
             outs = min(
-                int(score_data.get("outs", 0))
-                if isinstance(score_data.get("outs"), (int, str))
-                and str(score_data.get("outs")).isdigit()
-                else 0,
+                int(score_data["outs"]) if score_data["outs"] not in [None, "-"] else 0,
                 2,
             )
 
@@ -978,88 +1031,45 @@ def main_display(
 
             # Display baseball diamond with fixed height
             st.subheader("Baseball Diamond")
-            try:
-                if create_baseball_diamond:
-                    # Check if we have valid bases_occupied data
-                    bases_occupied = score_data.get("bases_occupied", [])
-                    diamond_html = create_baseball_diamond(
-                        first_base=1 in bases_occupied,
-                        second_base=2 in bases_occupied,
-                        third_base=3 in bases_occupied,
-                    )
-                    st.markdown(diamond_html, unsafe_allow_html=True)
-                else:
-                    st.info("Baseball diamond visualization not available")
-            except Exception as e:
-                st.warning(f"Error displaying baseball diamond: {e}")
+            baseball_fig = create_baseball_diamond(score_data["bases_occupied"])
 
+            # Adjust the chart height and remove extra spacing
+            st.plotly_chart(
+                baseball_fig,
+                use_container_width=True,
+                height=300,  # Set height directly here
+            )
             # Add this new section for hot/cold zones
-            if score_data.get("batter_hot_cold_zones") and create_hot_cold_zones:
-                try:
-                    st.subheader("Batter Hot/Cold Zones")
-                    # Add stat type selector
-                    stat_options = ["OPS", "AVG", "Exit Velocity"]
-                    stat_mapping = {
-                        "OPS": "onBasePlusSlugging",
-                        "AVG": "battingAverage",
-                        "Exit Velocity": "exitVelocity",
-                    }
+            if score_data.get("batter_hot_cold_zones"):
+                st.subheader("Batter Hot/Cold Zones")
+                # Add stat type selector
+                stat_options = ["OPS", "AVG", "Exit Velocity"]
+                stat_mapping = {
+                    "OPS": "onBasePlusSlugging",
+                    "AVG": "battingAverage",
+                    "Exit Velocity": "exitVelocity",
+                }
 
-                    selected_stat = st.selectbox(
-                        "Select Stat Type:",
-                        options=stat_options,
-                        index=0,
-                        key="hot_zone_stat_type",
-                    )
+                selected_stat = st.selectbox(
+                    "Select Stat Type:",
+                    options=stat_options,
+                    index=0,
+                    key="hot_zone_stat_type",
+                )
 
-                    mapped_stat = stat_mapping[selected_stat]
+                mapped_stat = stat_mapping[selected_stat]
 
-                    # Create and display the hot/cold zones visualization
-                    hot_zones_fig = create_hot_cold_zones(
-                        score_data["batter_hot_cold_zones"],
-                        stat_type=mapped_stat,
-                        batter_handedness=score_data.get("batter_handedness"),
-                    )
+                # Create and display the hot/cold zones visualization
+                hot_zones_fig = create_hot_cold_zones(
+                    score_data["batter_hot_cold_zones"],
+                    stat_type=mapped_stat,
+                    batter_handedness=score_data.get("batter_handedness"),
+                )
 
-                    if hot_zones_fig:
-                        st.plotly_chart(hot_zones_fig, use_container_width=True)
-                    else:
-                        st.info("No hot/cold zone data available for this batter.")
-                except Exception as e:
-                    st.warning(f"Error displaying hot zones: {e}")
-
-        elif score_data.get("abstract_game_state") == "Preview":
-            # For preview games, show venue and time information
-            st.header("Game Preview")
-
-            # Show venue info if available
-            venue = score_data.get("venue", "")
-            if venue:
-                st.markdown(f"**Venue:** {venue}")
-
-            # Calculate time until game starts if start_time is available
-            if score_data.get("start_time"):
-                now = datetime.datetime.now(datetime.timezone.utc)
-                start_time = score_data["start_time"]
-                time_diff = start_time - now
-
-                # Only show if start time is in the future
-                if time_diff.total_seconds() > 0:
-                    # Format time until game
-                    days = time_diff.days
-                    hours, remainder = divmod(time_diff.seconds, 3600)
-                    minutes, seconds = divmod(remainder, 60)
-
-                    time_str = ""
-                    if days > 0:
-                        time_str += f"{days} days, "
-                    if hours > 0 or days > 0:
-                        time_str += f"{hours} hours, "
-
-                    time_str += f"{minutes} minutes"
-
-                    st.subheader("Time Until First Pitch")
-                    st.info(time_str)
+                if hot_zones_fig:
+                    st.plotly_chart(hot_zones_fig, use_container_width=True)
+                else:
+                    st.info("No hot/cold zone data available for this batter.")
 
 
 def display_analysis_tab(
@@ -1124,3 +1134,283 @@ def display_analysis_tab(
                 )
         else:
             st.error("Failed to retrieve analysis data")
+
+
+def add_deepseek_analysis_to_live_tracker():
+    """Add DeepSeek analysis component to the live tracker UI"""
+
+    # Import here to avoid circular imports
+    try:
+        from api.deepseek_analyzer import get_matchup_insights
+
+        DEEPSEEK_AVAILABLE = True
+    except ImportError:
+        DEEPSEEK_AVAILABLE = False
+
+    # Create expandable section for DeepSeek analysis
+    with st.expander("DeepSeek AI Matchup Analysis", expanded=True):
+        if not DEEPSEEK_AVAILABLE:
+            st.warning(
+                "DeepSeek AI integration is not available. "
+                "Make sure you have installed the DeepSeek API module."
+            )
+            return
+
+        try:
+            from config.api_keys import DEEPSEEK_API_KEY
+
+            api_key = DEEPSEEK_API_KEY
+        except ImportError:
+            # Fallback to environment variable
+            import os
+
+            api_key = os.environ.get("DEEPSEEK_API_KEY")
+
+        if not api_key:
+            st.warning(
+                "DeepSeek API key not configured. Please set the DEEPSEEK_API_KEY environment variable. "
+                "You can get an API key from DeepSeek's website."
+            )
+
+            # Allow user to input API key in the UI
+            temp_api_key = st.text_input(
+                "Enter DeepSeek API Key (Temporary, will not be saved)", type="password"
+            )
+
+            if temp_api_key:
+                os.environ["DEEPSEEK_API_KEY"] = temp_api_key
+                st.success(
+                    "API key set for this session! You can now analyze matchups."
+                )
+
+        # Check if current at-bat data is available
+        current_pitcher_id = st.session_state.get("current_pitcher_id")
+        current_batter_id = st.session_state.get("current_batter_id")
+        current_pitcher_name = st.session_state.get(
+            "current_pitcher_name", "Unknown Pitcher"
+        )
+        current_batter_name = st.session_state.get(
+            "current_batter_name", "Unknown Batter"
+        )
+
+        if not (current_pitcher_id and current_batter_id):
+            st.info("Waiting for active pitcher and batter data...")
+            return
+
+        # Create analysis button
+        if st.button("Analyze Current Matchup with DeepSeek AI"):
+            with st.spinner("Generating DeepSeek analysis..."):
+                try:
+                    # Call the DeepSeek analysis function
+                    analysis = get_matchup_insights(
+                        pitcher_id=current_pitcher_id,
+                        batter_id=current_batter_id,
+                        pitcher_name=current_pitcher_name,
+                        batter_name=current_batter_name,
+                    )
+
+                    # Display the analysis
+                    st.markdown("### Matchup Analysis")
+                    st.markdown(
+                        f"**{current_pitcher_name}** vs **{current_batter_name}**"
+                    )
+
+                    # Apply styling to the analysis output
+                    st.markdown(
+                        f"""
+                        <div style="
+                            background-color: rgba(0, 0, 0, 0.05);
+                            border-left: 5px solid #ff4b4b;
+                            padding: 15px;
+                            border-radius: 5px;
+                            margin: 10px 0;">
+                            {analysis}
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    # Add timestamp
+                    st.caption(
+                        f"Generated at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    )
+
+                except Exception as e:
+                    st.error(f"Error generating analysis: {str(e)}")
+
+
+def add_deepseek_analysis_to_custom_matchup():
+    """Add DeepSeek analysis component to custom matchup analysis UI"""
+
+    # Import here to avoid circular imports
+    try:
+        from api.deepseek_analyzer import get_matchup_insights
+
+        DEEPSEEK_AVAILABLE = True
+    except ImportError:
+        DEEPSEEK_AVAILABLE = False
+
+    st.markdown("### DeepSeek AI Advanced Matchup Analysis")
+
+    if not DEEPSEEK_AVAILABLE:
+        st.warning(
+            "DeepSeek AI integration is not available. "
+            "Make sure you have installed the DeepSeek API module."
+        )
+        return
+
+    # Show API key configuration status
+    try:
+        from config.api_keys import DEEPSEEK_API_KEY
+
+        api_key = DEEPSEEK_API_KEY
+
+    except ImportError:
+        # Fallback to environment variable
+        import os
+
+        api_key = os.environ.get("DEEPSEEK_API_KEY")
+
+    if not api_key:
+        st.warning(
+            "DeepSeek API key not configured. Please set the DEEPSEEK_API_KEY environment variable. "
+            "You can get an API key from DeepSeek's website."
+        )
+
+        # Allow user to input API key in the UI
+        temp_api_key = st.text_input(
+            "Enter DeepSeek API Key (Temporary, will not be saved)", type="password"
+        )
+
+        if temp_api_key:
+            os.environ["DEEPSEEK_API_KEY"] = temp_api_key
+            st.success("API key set for this session! You can now analyze matchups.")
+
+    # Get currently selected pitcher and team
+    selected_pitcher_id = st.session_state.get("custom_pitcher_id")
+    selected_team_id = st.session_state.get("custom_team_id")
+    selected_pitcher_name = st.session_state.get(
+        "custom_pitcher_name", "Unknown Pitcher"
+    )
+
+    if not (selected_pitcher_id and selected_team_id):
+        st.info("Please select a team and pitcher first")
+        return
+
+    # Get team roster for batter selection
+    try:
+        from api.mlb_api import get_team_roster
+        from datetime import datetime
+
+        # Get current year
+        current_year = datetime.now().year
+
+        # Get team roster
+        roster = get_team_roster(selected_team_id, current_year)
+
+        # Extract position players
+        position_players = [p for p in roster if p.get("position") != "P"]
+
+        # Create dropdown for selecting batter
+        if position_players:
+            selected_batter = st.selectbox(
+                "Select Batter for Analysis",
+                options=[(p["full_name"], p["player_id"]) for p in position_players],
+                format_func=lambda x: x[0],  # Show only the name in the dropdown
+            )
+
+            selected_batter_name, selected_batter_id = selected_batter
+
+            # Create analysis button
+            if st.button("Generate AI Matchup Analysis", type="primary"):
+                with st.spinner("Generating AI analysis..."):
+                    try:
+                        # Add a small delay to make the spinner visible
+                        time.sleep(1)
+
+                        # Call the DeepSeek analysis function
+                        analysis = get_matchup_insights(
+                            pitcher_id=selected_pitcher_id,
+                            batter_id=selected_batter_id,
+                            pitcher_name=selected_pitcher_name,
+                            batter_name=selected_batter_name,
+                        )
+
+                        # Display the analysis with styling
+                        st.markdown("### DeepSeek Analysis")
+                        st.markdown(
+                            f"**{selected_pitcher_name}** vs **{selected_batter_name}**"
+                        )
+
+                        # Apply styling to the analysis output
+                        st.markdown(
+                            f"""
+                            <div style="
+                                background-color: rgba(0, 0, 0, 0.05);
+                                border-left: 5px solid #ff4b4b;
+                                padding: 15px;
+                                border-radius: 5px;
+                                margin: 10px 0;">
+                                {analysis}
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+
+                        # Add timestamp
+                        st.caption(
+                            f"Generated at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                        )
+
+                    except Exception as e:
+                        st.error(f"Error generating analysis: {str(e)}")
+        else:
+            st.warning(f"No position players found in the roster")
+
+    except Exception as e:
+        st.error(f"Error loading team roster: {str(e)}")
+
+
+def update_live_tracker_with_deepseek(main_display_function, score_data):
+    """
+    Update the main display function to include DeepSeek analyses
+
+    Args:
+        main_display_function: Original main_display function
+        score_data: The score data from get_live_data
+    """
+    # Store current pitcher and batter IDs in session state
+    if score_data.get("pitcher_id"):
+        st.session_state.current_pitcher_id = score_data["pitcher_id"]
+        st.session_state.current_pitcher_name = score_data.get(
+            "pitcher", "Unknown Pitcher"
+        )
+
+    if score_data.get("batter_id"):
+        st.session_state.current_batter_id = score_data["batter_id"]
+        st.session_state.current_batter_name = score_data.get(
+            "batter", "Unknown Batter"
+        )
+
+    # Call original display function
+    main_display_function()
+
+    # Add DeepSeek analysis if we're in a live game
+    if score_data.get("abstract_game_state") == "Live":
+        add_deepseek_analysis_to_live_tracker()
+
+
+def initialize_deepseek():
+    """Initialize DeepSeek integration"""
+    # Check if DeepSeek module is available
+    try:
+        import api.deepseek_analyzer
+
+        st.success("DeepSeek AI integration initialized successfully!")
+        return True
+    except ImportError:
+        st.warning(
+            "DeepSeek AI integration module not found. "
+            "Make sure you have added the deepseek_analyzer.py file to your api folder."
+        )
+        return False
