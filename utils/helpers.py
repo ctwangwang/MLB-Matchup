@@ -91,3 +91,33 @@ def load_from_json(filename):
     except (FileNotFoundError, json.JSONDecodeError) as e:
         print(f"❌ 無法加載 {filename}: {str(e)}")
         return None
+
+
+def convert_stat_to_float(value):
+    """Safely convert a stat value to float"""
+    if value is None:
+        return 0.0
+
+    try:
+        if isinstance(value, str):
+            # Handle any potential commas in string numbers
+            value = value.replace(",", "")
+
+        return float(value)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def convert_stat_to_int(value):
+    """Safely convert a stat value to integer"""
+    if value is None:
+        return 0
+
+    try:
+        if isinstance(value, str):
+            # Handle any potential commas in string numbers
+            value = value.replace(",", "")
+
+        return int(float(value))
+    except (ValueError, TypeError):
+        return 0
