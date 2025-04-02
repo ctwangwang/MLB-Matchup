@@ -529,54 +529,277 @@ def create_hot_cold_zones(
 
 def display_hitter_data(title, hitter_data):
     """
-    Display hitter data in a table
+    Display hitter data with consistent table styling to match the main display
 
     Args:
-        title (str): Table title
-        hitter_data (tuple/list): Hitter data
+        title: Title to display above the hitter data
+        hitter_data: Dictionary or list of dictionaries containing hitter stats
     """
-    if hitter_data:
+    import streamlit as st
+    import pandas as pd
+
+    st.subheader(title)
+
+    if not hitter_data:
+        st.info("No data available")
+        return
+
+    # Apply consistent stats table styling
+    st.markdown(
+        """
+        <style>
+        .stats-table {
+            width: 100%;
+            text-align: center;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .stats-table th {
+            padding: 8px;
+            background-color: #2c3e50;  /* Dark blue header */
+            color: white;
+            font-weight: bold;
+            border: 1px solid #555;
+        }
+        .stats-table td {
+            padding: 8px;
+            border: 1px solid #555;
+            background-color: #1e2933;  /* Slightly lighter than the main background */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Handle different data formats
+
+    # CASE 1: Single dictionary with player stats
+    if isinstance(hitter_data, dict):
+        hitter = hitter_data
+        # Create the table header with hitter name
+        st.markdown(
+            f"**{hitter.get('full_name', 'Unknown Player')}** - {hitter.get('position', '')}"
+        )
+
+        # Safely format statistics with proper handling for None values
+        avg_val = (
+            f"{float(hitter.get('avg', 0.0)):.3f}"
+            if hitter.get("avg") is not None
+            else "-"
+        )
+        obp_val = (
+            f"{float(hitter.get('obp', 0.0)):.3f}"
+            if hitter.get("obp") is not None
+            else "-"
+        )
+        slg_val = (
+            f"{float(hitter.get('slg', 0.0)):.3f}"
+            if hitter.get("slg") is not None
+            else "-"
+        )
+        ops_val = (
+            f"{float(hitter.get('ops', 0.0)):.3f}"
+            if hitter.get("ops") is not None
+            else "-"
+        )
+        hr_val = hitter.get("hr", "-")
+        rbi_val = hitter.get("rbi", "-")
+
+        # Apply consistent HTML table formatting
+        st.markdown(
+            f"""
+            <table class="stats-table">
+                <tr>
+                    <th>AVG</th>
+                    <th>OBP</th>
+                    <th>SLG</th>
+                    <th>OPS</th>
+                    <th>HR</th>
+                    <th>RBI</th>
+                </tr>
+                <tr>
+                    <td>{avg_val}</td>
+                    <td>{obp_val}</td>
+                    <td>{slg_val}</td>
+                    <td>{ops_val}</td>
+                    <td>{hr_val}</td>
+                    <td>{rbi_val}</td>
+                </tr>
+            </table>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Add matchup stats if available
+        if hitter.get("vs_pitcher"):
+            vs_pitcher = hitter["vs_pitcher"]
+
+            # Get pitcher name
+            pitcher_name = vs_pitcher.get("pitcher_name", "the pitcher")
+
+            st.markdown(f"**Matchup vs {pitcher_name}:**")
+
+            # Safely format statistics
+            pa_val = vs_pitcher.get("pa", "-")
+            ab_val = vs_pitcher.get("ab", "-")
+            h_val = vs_pitcher.get("h", "-")
+            avg_val = (
+                f"{float(vs_pitcher.get('avg', 0.0)):.3f}"
+                if vs_pitcher.get("avg") is not None
+                else "-"
+            )
+            obp_val = (
+                f"{float(vs_pitcher.get('obp', 0.0)):.3f}"
+                if vs_pitcher.get("obp") is not None
+                else "-"
+            )
+            slg_val = (
+                f"{float(vs_pitcher.get('slg', 0.0)):.3f}"
+                if vs_pitcher.get("slg") is not None
+                else "-"
+            )
+            ops_val = (
+                f"{float(vs_pitcher.get('ops', 0.0)):.3f}"
+                if vs_pitcher.get("ops") is not None
+                else "-"
+            )
+
+            # Apply consistent HTML table formatting for matchup stats
+            st.markdown(
+                f"""
+                <table class="stats-table">
+                    <tr>
+                        <th>PA</th>
+                        <th>AB</th>
+                        <th>H</th>
+                        <th>AVG</th>
+                        <th>OBP</th>
+                        <th>SLG</th>
+                        <th>OPS</th>
+                    </tr>
+                    <tr>
+                        <td>{pa_val}</td>
+                        <td>{ab_val}</td>
+                        <td>{h_val}</td>
+                        <td>{avg_val}</td>
+                        <td>{obp_val}</td>
+                        <td>{slg_val}</td>
+                        <td>{ops_val}</td>
+                    </tr>
+                </table>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # CASE 2: List of dictionaries with player stats
+    elif (
+        isinstance(hitter_data, list)
+        and len(hitter_data) > 0
+        and isinstance(hitter_data[0], dict)
+    ):
+        # Handle multiple hitters in a HTML table
+
+        # Create table header
+        html_table = "<table class='stats-table'><tr>"
+        # Try to identify common columns in all hitter records
+        all_keys = set()
+        for hitter in hitter_data:
+            if isinstance(hitter, dict):
+                all_keys.update(hitter.keys())
+
+        # Select relevant columns to display
+        display_columns = [
+            "full_name",
+            "position",
+            "avg",
+            "obp",
+            "slg",
+            "ops",
+            "hr",
+            "rbi",
+        ]
+        # Filter to only include columns that exist in the data
+        display_columns = [col for col in display_columns if col in all_keys]
+
+        # Pretty column names for the header
+        column_labels = {
+            "full_name": "Player",
+            "position": "POS",
+            "avg": "AVG",
+            "obp": "OBP",
+            "slg": "SLG",
+            "ops": "OPS",
+            "hr": "HR",
+            "rbi": "RBI",
+        }
+
+        # Add table headers
+        for col in display_columns:
+            label = column_labels.get(col, col.upper())
+            html_table += f"<th>{label}</th>"
+        html_table += "</tr>"
+
+        # Add table rows
+        for hitter in hitter_data:
+            if isinstance(hitter, dict):
+                html_table += "<tr>"
+                for col in display_columns:
+                    value = hitter.get(col, "-")
+
+                    # Format numeric values
+                    if (
+                        col in ["avg", "obp", "slg", "ops"]
+                        and value is not None
+                        and value != "-"
+                    ):
+                        try:
+                            value = f"{float(value):.3f}"
+                        except (TypeError, ValueError):
+                            value = "-"
+
+                    html_table += f"<td>{value}</td>"
+                html_table += "</tr>"
+        html_table += "</table>"
+
+        # Display the table
+        st.markdown(html_table, unsafe_allow_html=True)
+
+    # CASE 3: Tuple or list of simple values (common for stats output)
+    elif isinstance(hitter_data, tuple) or (
+        isinstance(hitter_data, list)
+        and len(hitter_data) > 0
+        and not isinstance(hitter_data[0], dict)
+    ):
+        # Convert single tuple to list
         if isinstance(hitter_data, tuple):
-            hitter_data = [list(hitter_data)]
-        elif isinstance(hitter_data, list) and isinstance(
-            hitter_data[0], (str, float, int)
-        ):
-            hitter_data = [hitter_data]
+            rows = [hitter_data]
+        # Handle list of tuples/lists
+        elif all(isinstance(item, (tuple, list)) for item in hitter_data):
+            rows = hitter_data
+        # Handle simple list (single row)
+        else:
+            rows = [hitter_data]
 
-        df = pd.DataFrame(
-            hitter_data, columns=["Player", "AVG", "OBP", "SLG", "OPS"]
-        ).round(3)
+        # Create HTML table
+        html_table = "<table class='stats-table'><tr><th>Player</th><th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th></tr>"
 
-        st.subheader(title)
-        st.table(df.set_index("Player"))  # Hide index
+        for row in rows:
+            html_table += "<tr>"
+            for i, value in enumerate(row):
+                if i > 0 and isinstance(value, float):  # Format float values
+                    formatted_value = f"{value:.3f}"
+                else:
+                    formatted_value = str(value)
+                html_table += f"<td>{formatted_value}</td>"
+            html_table += "</tr>"
+
+        html_table += "</table>"
+        st.markdown(html_table, unsafe_allow_html=True)
+
     else:
-        st.write(f"⚠️ {title} - No data available")
-
-
-def display_hitter_data(title, hitter_data):
-    """
-    Display hitter data in a table
-
-    Args:
-        title (str): Table title
-        hitter_data (tuple/list): Hitter data
-    """
-    if hitter_data:
-        if isinstance(hitter_data, tuple):
-            hitter_data = [list(hitter_data)]
-        elif isinstance(hitter_data, list) and isinstance(
-            hitter_data[0], (str, float, int)
-        ):
-            hitter_data = [hitter_data]
-
-        df = pd.DataFrame(
-            hitter_data, columns=["Player", "AVG", "OBP", "SLG", "OPS"]
-        ).round(3)
-
-        st.subheader(title)
-        st.table(df.set_index("Player"))  # Hide index
-    else:
-        st.write(f"⚠️ {title} - No data available")
+        # Fallback for unsupported formats - display raw data
+        st.info(f"Displaying raw data (format: {type(hitter_data)})")
+        st.write(hitter_data)
 
 
 def get_fip_minus_color(fip_minus):

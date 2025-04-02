@@ -21,8 +21,9 @@ def switch_to_analysis_tab(pitcher_id, team_id, pitcher_name, team_name):
 
     st.session_state.active_tab = "Batter vs. Pitcher Analysis"
 
+    st.session_state.pending_tab_switch = True  # Set a flag instead
     # Force rerun to apply changes immediately
-    st.rerun()
+    # st.rerun()
 
 
 def main_display(
@@ -1447,7 +1448,39 @@ def display_analysis_tab(
     get_batter_vs_pitcher_stats,
     MLB_TEAMS,
 ):
+    """
+    Display the batter vs pitcher analysis tab with consistent styling
+    """
+    import streamlit as st
+
     st.markdown(f"### Analyzing {team_name} batters vs {pitcher_name}")
+
+    # Add consistent styling for all tables in this tab
+    st.markdown(
+        """
+        <style>
+        .stats-table {
+            width: 100%;
+            text-align: center;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .stats-table th {
+            padding: 8px;
+            background-color: #2c3e50;  /* Dark blue header */
+            color: white;
+            font-weight: bold;
+            border: 1px solid #555;
+        }
+        .stats-table td {
+            padding: 8px;
+            border: 1px solid #555;
+            background-color: #1e2933;  /* Slightly lighter than the main background */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Perform the analysis
     with st.spinner(f"Analyzing {team_name} batters against {pitcher_name}..."):
@@ -1498,7 +1531,26 @@ def display_analysis_tab(
 
 
 def add_deepseek_analysis_to_live_tracker():
-    """Add DeepSeek analysis component to the live tracker UI"""
+    """Add DeepSeek analysis component to the live tracker UI with consistent styling"""
+    import streamlit as st
+    import datetime
+
+    # Add consistent styling
+    st.markdown(
+        """
+        <style>
+        .analysis-container {
+            background-color: rgba(30, 41, 51, 0.9);
+            border-left: 5px solid #ff4b4b;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            color: white;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Import here to avoid circular imports
     try:
@@ -1579,12 +1631,7 @@ def add_deepseek_analysis_to_live_tracker():
                     # Apply styling to the analysis output
                     st.markdown(
                         f"""
-                        <div style="
-                            background-color: rgba(0, 0, 0, 0.05);
-                            border-left: 5px solid #ff4b4b;
-                            padding: 15px;
-                            border-radius: 5px;
-                            margin: 10px 0;">
+                        <div class="analysis-container">
                             {analysis}
                         </div>
                         """,
@@ -1601,7 +1648,25 @@ def add_deepseek_analysis_to_live_tracker():
 
 
 def add_deepseek_analysis_to_custom_matchup():
-    """Add DeepSeek analysis component to custom matchup analysis UI"""
+    """Add DeepSeek analysis component to custom matchup analysis UI with consistent styling"""
+    import datetime
+
+    # Add consistent styling
+    st.markdown(
+        """
+        <style>
+        .analysis-container {
+            background-color: rgba(30, 41, 51, 0.9);
+            border-left: 5px solid #ff4b4b;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            color: white;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Import here to avoid circular imports
     try:
@@ -1625,7 +1690,6 @@ def add_deepseek_analysis_to_custom_matchup():
         from config.api_keys import DEEPSEEK_API_KEY
 
         api_key = DEEPSEEK_API_KEY
-
     except ImportError:
         # Fallback to environment variable
         import os
@@ -1661,10 +1725,9 @@ def add_deepseek_analysis_to_custom_matchup():
     # Get team roster for batter selection
     try:
         from api.mlb_api import get_team_roster
-        from datetime import datetime
 
         # Get current year
-        current_year = datetime.now().year
+        current_year = datetime.datetime.now().year
 
         # Get team roster
         roster = get_team_roster(selected_team_id, current_year)
@@ -1697,7 +1760,7 @@ def add_deepseek_analysis_to_custom_matchup():
                             batter_name=selected_batter_name,
                         )
 
-                        # Display the analysis with styling
+                        # Display the analysis with consistent styling
                         st.markdown("### DeepSeek Analysis")
                         st.markdown(
                             f"**{selected_pitcher_name}** vs **{selected_batter_name}**"
@@ -1706,12 +1769,7 @@ def add_deepseek_analysis_to_custom_matchup():
                         # Apply styling to the analysis output
                         st.markdown(
                             f"""
-                            <div style="
-                                background-color: rgba(0, 0, 0, 0.05);
-                                border-left: 5px solid #ff4b4b;
-                                padding: 15px;
-                                border-radius: 5px;
-                                margin: 10px 0;">
+                            <div class="analysis-container">
                                 {analysis}
                             </div>
                             """,
