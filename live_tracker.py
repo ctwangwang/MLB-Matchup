@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 from typing import Optional
+from streamlit_autorefresh import st_autorefresh
 
 # Import our modules
 from mlb_data import (
@@ -104,6 +105,16 @@ if "tab_redirect" not in st.session_state:
 if "force_tab_switch" not in st.session_state:
     st.session_state.force_tab_switch = False
 
+# Auto-refresh related state variables
+if "auto_refresh_enabled" not in st.session_state:
+    st.session_state.auto_refresh_enabled = False
+
+if "auto_refresh_interval" not in st.session_state:
+    st.session_state.auto_refresh_interval = 30  # 30 seconds default
+
+if "last_auto_refresh" not in st.session_state:
+    st.session_state.last_auto_refresh = datetime.datetime.now()
+
 
 # Function to switch tabs via callback
 def change_tab(tab_name):
@@ -130,7 +141,22 @@ if st.session_state.active_tab == "Batter vs. Pitcher Analysis":
 elif st.session_state.active_tab == "Custom Matchup Analysis":
     tab_index = 2
 
-# Create the tab selector
+
+def handle_tab_change():
+    # Store previous tab
+    st.session_state.previous_tab = st.session_state.active_tab
+    # Set new active tab
+    st.session_state.active_tab = st.session_state.tab_selector
+
+    # Disable auto-refresh when leaving Live Score Tracker tab
+    if (
+        st.session_state.previous_tab == "Live Score Tracker"
+        and st.session_state.active_tab != "Live Score Tracker"
+    ):
+        st.session_state.auto_refresh_enabled = False
+
+
+# Update the radio button to use the new handler
 selected_tab = st.radio(
     "Select View:",
     ["Live Score Tracker", "Batter vs. Pitcher Analysis", "Custom Matchup Analysis"],
@@ -138,10 +164,7 @@ selected_tab = st.radio(
     label_visibility="collapsed",
     index=tab_index,
     key="tab_selector",
-    # Add on_change handler
-    on_change=lambda: setattr(
-        st.session_state, "active_tab", st.session_state.tab_selector
-    ),
+    on_change=handle_tab_change,
 )
 
 # Update the active tab from user selection or from analysis button
@@ -151,6 +174,20 @@ if "tab_selector" in st.session_state:
 # TAB 1: LIVE SCORE TRACKER
 if st.session_state.active_tab == "Live Score Tracker":
     st.title("⚾ MLB Live Score Tracker")
+
+    # Add the auto-refresh component
+    if st.session_state.auto_refresh_enabled:
+        # Convert seconds to milliseconds for the component
+        refresh_interval_ms = st.session_state.auto_refresh_interval * 1000
+        # Initialize the autorefresh component
+        refresh_count = st_autorefresh(
+            interval=refresh_interval_ms, key="autorefresher"
+        )
+
+        # Show refresh status
+        st.info(
+            f"🔄 Auto-refreshing every {st.session_state.auto_refresh_interval} seconds. Refresh count: {refresh_count}"
+        )
 
     if previous_tab != st.session_state.active_tab:
         st.session_state.previous_tab = previous_tab
@@ -339,9 +376,47 @@ if st.session_state.active_tab == "Live Score Tracker":
         unsafe_allow_html=True,
     )
     # Add manual refresh button with a distinctive color and full width
-    if st.sidebar.button("🔁 REFRESH DATA NOW 🔁", key="refresh_button"):
+    if st.sidebar.button("🔄 REFRESH DATA NOW", key="refresh_button"):
         st.session_state.last_refresh = datetime.datetime.now()
         st.rerun()
+
+    # Add to the sidebar in the Live Score Tracker tab
+    st.sidebar.markdown("### Auto-Refresh Settings")
+
+    # Toggle button for auto-refresh
+    if st.sidebar.button(
+        "🔄 Enable Auto-Refresh"
+        if not st.session_state.auto_refresh_enabled
+        else "⏹️ Disable Auto-Refresh"
+    ):
+        st.session_state.auto_refresh_enabled = (
+            not st.session_state.auto_refresh_enabled
+        )
+        st.session_state.last_auto_refresh = datetime.datetime.now()  # Reset the timer
+
+    # Status indicator
+    if st.session_state.auto_refresh_enabled:
+        st.sidebar.success(
+            f"Auto-refresh is enabled (every {st.session_state.auto_refresh_interval} seconds)"
+        )
+    else:
+        st.sidebar.info("Auto-refresh is disabled")
+
+    # Interval slider
+    new_interval = st.sidebar.slider(
+        "Refresh interval (seconds)",
+        min_value=10,
+        max_value=60,
+        value=st.session_state.auto_refresh_interval,
+        step=5,
+    )
+
+    # Update interval if changed
+    if new_interval != st.session_state.auto_refresh_interval:
+        st.session_state.auto_refresh_interval = new_interval
+        st.session_state.last_auto_refresh = datetime.datetime.now()  # Reset the timer
+
+    st.sidebar.markdown("---")
 
     # Only proceed if we have a game ID
     if game_id:
@@ -395,6 +470,20 @@ if st.session_state.active_tab == "Live Score Tracker":
             from ui_components import add_deepseek_analysis_to_live_tracker
 
             add_deepseek_analysis_to_live_tracker()
+        # Auto-refresh logic for the Live Score Tracker tab
+        if (
+            st.session_state.active_tab == "Live Score Tracker"
+            and st.session_state.auto_refresh_enabled
+        ):
+            current_time = datetime.datetime.now()
+            time_since_last_refresh = (
+                current_time - st.session_state.last_auto_refresh
+            ).total_seconds()
+
+            if time_since_last_refresh >= st.session_state.auto_refresh_interval:
+                st.session_state.last_refresh = current_time
+                st.session_state.last_auto_refresh = current_time
+                st.rerun()
 
 # TAB 2: BATTER VS. PITCHER ANALYSIS
 elif st.session_state.active_tab == "Batter vs. Pitcher Analysis":
