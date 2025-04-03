@@ -267,10 +267,17 @@ def process_live_game_data(data, base_result):
             home_hits = linescore["teams"]["home"].get("hits", 0) or 0
             home_errors = linescore["teams"]["home"].get("errors", 0) or 0
 
-    # Get inning info
+    # Get inning info directly from linescore - these fields are available there
     inning = linescore.get("currentInning", 0)
-    inning_half = linescore.get("inningHalf", "")
-    inning_state = linescore.get("inningState", "")
+    inning_half = linescore.get(
+        "inningHalf", "Top"
+    )  # Directly access inningHalf from linescore
+    inning_state = linescore.get(
+        "inningState", "Middle"
+    )  # Directly access inningState from linescore
+
+    # Ensure the first letter is capitalized for consistency
+    inning_half = inning_half.capitalize() if inning_half else "Top"
 
     # Get baserunner information
     bases_occupied = []

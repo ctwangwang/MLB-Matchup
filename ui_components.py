@@ -3,27 +3,35 @@ import pandas as pd
 import datetime
 import time
 from utils.helpers import convert_stat_to_float, convert_stat_to_int
+from mlb_data import get_live_data  # Add this import
 
 
 def switch_to_analysis_tab(pitcher_id, team_id, pitcher_name, team_name):
     """
-    Function to switch to the analysis tab with proper data and disable auto-refresh
-
-    This function needs to ensure we're analyzing the correct team's batters against the opposing pitcher.
+    Function to switch to analysis tab with proper data
+    Now automatically handles opposing team logic
     """
-    # Store analysis parameters in session state
+    # Get current game data (simplified version)
+    game_data = get_live_data(st.session_state.selected_game_id)
+
+    # Determine opposing team (critical fix remains)
+    if team_id == game_data["away_team_id"]:
+        batter_team_id = game_data["home_team_id"]
+        batter_team_name = game_data["home_team"]
+    else:
+        batter_team_id = game_data["away_team_id"]
+        batter_team_name = game_data["away_team"]
+
+    # Store analysis parameters (now with correct opposing team)
     st.session_state.analyze_pitcher_id = pitcher_id
-    st.session_state.analyze_team_id = (
-        team_id  # This is the team whose batters we want to analyze
-    )
+    st.session_state.analyze_team_id = batter_team_id  # Using opposing team
     st.session_state.analyze_pitcher_name = pitcher_name
-    st.session_state.analyze_team_name = team_name
+    st.session_state.analyze_team_name = batter_team_name
+    st.session_state.analysis_game_id = st.session_state.selected_game_id
 
+    # Set active tab and refresh
     st.session_state.active_tab = "Batter vs. Pitcher Analysis"
-
-    st.session_state.pending_tab_switch = True  # Set a flag instead
-    # Force rerun to apply changes immediately
-    # st.rerun()
+    st.rerun()
 
 
 def main_display(
@@ -137,45 +145,36 @@ def main_display(
 
         # Analyze button callback functions
         def analyze_away_pitcher():
-            # For away pitcher (from away team), we want to analyze home team batters
+            # For away pitcher, analyze HOME team batters
             switch_to_analysis_tab(
                 score_data["probable_away_pitcher_id"],
-                score_data["home_team_id"],  # Home team's batters against away pitcher
+                score_data["away_team_id"],  # Pitcher's team ID
                 score_data["probable_away_pitcher"],
-                score_data["home_team"],
+                score_data["away_team"],  # Pitcher's team name
             )
 
         def analyze_home_pitcher():
-            # For home pitcher (from home team), we want to analyze away team batters
+            # For home pitcher, analyze AWAY team batters
             switch_to_analysis_tab(
                 score_data["probable_home_pitcher_id"],
-                score_data["away_team_id"],  # Away team's batters against home pitcher
+                score_data["home_team_id"],  # Pitcher's team ID
                 score_data["probable_home_pitcher"],
-                score_data["away_team"],
+                score_data["home_team"],  # Pitcher's team name
             )
 
         def analyze_current_pitcher():
-            # Determine which team is batting against the pitcher
-            if score_data.get("inning_half") == "top":
-                # When it's top of the inning:
-                # - Home team is pitching
-                # - Away team is batting
+            if score_data.get("inning_half") == "Top":
+                pitcher_team_id = score_data["home_team_id"]
                 pitcher_team = score_data["home_team"]
-                batter_team = score_data["away_team"]
-                batter_team_id = score_data["away_team_id"]
             else:
-                # When it's bottom of the inning:
-                # - Away team is pitching
-                # - Home team is batting
+                pitcher_team_id = score_data["away_team_id"]
                 pitcher_team = score_data["away_team"]
-                batter_team = score_data["home_team"]
-                batter_team_id = score_data["home_team_id"]
 
             switch_to_analysis_tab(
                 score_data["pitcher_id"],
-                batter_team_id,  # This is the batting team whose batters we want to analyze
+                pitcher_team_id,  # Pass pitcher's team for validation
                 score_data["pitcher"],
-                batter_team,
+                pitcher_team,
             )
 
         # Add analyze buttons for pitchers
@@ -327,12 +326,12 @@ def main_display(
                             st.warning(f"Could not load pitcher stats: {e}")
 
                     if score_data.get("probable_away_pitcher_id"):
+                        button_key = f"away_pitcher_analysis_{game_id}_{score_data.get('probable_away_pitcher_id', 'none')}"
                         if st.button(
                             f"Analyze {score_data['home_team']} batters vs {away_pitcher}",
-                            key="away_pitcher_analysis",
+                            key=button_key,
                             on_click=analyze_away_pitcher,
                         ):
-                            # The on_click handler does the work
                             pass
                 with col_home:
                     st.markdown(f"**{score_data['home_team']}:** {home_pitcher}")
@@ -413,12 +412,12 @@ def main_display(
                             st.warning(f"Could not load pitcher stats: {e}")
 
                     if score_data.get("probable_home_pitcher_id"):
+                        button_key = f"home_pitcher_analysis_{game_id}_{score_data.get('probable_home_pitcher_id', 'none')}"
                         if st.button(
                             f"Analyze {score_data['away_team']} batters vs {home_pitcher}",
-                            key="home_pitcher_analysis",
+                            key=button_key,
                             on_click=analyze_home_pitcher,
                         ):
-                            # The on_click handler does the work
                             pass
 
         elif score_data["abstract_game_state"] == "Live":
@@ -616,7 +615,7 @@ def main_display(
                     unsafe_allow_html=True,
                 )
                 # Determine which team the pitcher and batter belong to
-                if score_data.get("inning_half") == "top":
+                if score_data.get("inning_half") == "Top":
                     pitcher_team = score_data["home_team"]
                     batter_team = score_data["away_team"]
                 else:
@@ -941,12 +940,12 @@ def main_display(
                         )
 
                 # Analyze button
+                button_key = f"current_pitcher_analysis_{game_id}_{score_data.get('pitcher_id', 'none')}"
                 if st.button(
                     f"Analyze {batter_team} batters vs {score_data['pitcher']}",
-                    key="current_pitcher_analysis",
+                    key=button_key,
                     on_click=analyze_current_pitcher,
                 ):
-                    # The on_click handler does the work
                     pass
 
             # Situation Stats display
@@ -1451,7 +1450,6 @@ def display_analysis_tab(
     """
     Display the batter vs pitcher analysis tab with consistent styling
     """
-    import streamlit as st
 
     st.markdown(f"### Analyzing {team_name} batters vs {pitcher_name}")
 

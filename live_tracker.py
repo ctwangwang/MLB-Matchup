@@ -98,10 +98,11 @@ else:
     # Not first visit, so we'll track the tab changes normally
     st.session_state.first_time_visit = False
 
-# Process pending tab switch (this needs to happen before creating the radio widget)
-if st.session_state.pending_tab_switch:
-    st.session_state.pending_tab_switch = False
-    # No need to rerun, the current rerun cycle will apply the active_tab change
+if "tab_redirect" not in st.session_state:
+    st.session_state.tab_redirect = False
+
+if "force_tab_switch" not in st.session_state:
+    st.session_state.force_tab_switch = False
 
 
 # Function to switch tabs via callback
@@ -113,27 +114,46 @@ def change_tab(tab_name):
 
 previous_tab = st.session_state.active_tab  # Save current tab before it changes
 
-# Create tabs for different functionalities
-st.session_state.active_tab = st.radio(
+# Check URL for forced tab switch (add this near the beginning of live_tracker.py)
+if st.query_params.get("active_tab") == "analysis":
+    # Clear the parameter so it doesn't persist
+    st.query_params["active_tab"] = ""
+    # Set the active tab
+    st.session_state.active_tab = "Batter vs. Pitcher Analysis"
+    # Force refresh to ensure the tab switch takes effect
+    st.rerun()
+
+# Determine the index for the radio button based on current active tab
+tab_index = 0
+if st.session_state.active_tab == "Batter vs. Pitcher Analysis":
+    tab_index = 1
+elif st.session_state.active_tab == "Custom Matchup Analysis":
+    tab_index = 2
+
+# Create the tab selector
+selected_tab = st.radio(
     "Select View:",
     ["Live Score Tracker", "Batter vs. Pitcher Analysis", "Custom Matchup Analysis"],
     horizontal=True,
     label_visibility="collapsed",
-    index=0
-    if st.session_state.active_tab == "Live Score Tracker"
-    else (1 if st.session_state.active_tab == "Batter vs. Pitcher Analysis" else 2),
+    index=tab_index,
     key="tab_selector",
+    # Add on_change handler
+    on_change=lambda: setattr(
+        st.session_state, "active_tab", st.session_state.tab_selector
+    ),
 )
 
+# Update the active tab from user selection or from analysis button
+if "tab_selector" in st.session_state:
+    st.session_state.active_tab = st.session_state.tab_selector
 
 # TAB 1: LIVE SCORE TRACKER
 if st.session_state.active_tab == "Live Score Tracker":
     st.title("⚾ MLB Live Score Tracker")
-    st.markdown("Real-time score updates for MLB games")
 
     if previous_tab != st.session_state.active_tab:
         st.session_state.previous_tab = previous_tab
-
     # Track last refresh time
     current_time = datetime.datetime.now()
     time_diff = (current_time - st.session_state.last_refresh).total_seconds()
@@ -166,13 +186,18 @@ if st.session_state.active_tab == "Live Score Tracker":
         selected_game = st.session_state.select_game
         if selected_game and "ID:" in selected_game:
             new_game_id = selected_game.split("ID: ")[1].strip(")")
-            # Update URL with new game ID
+
+            # Only clear analysis if switching to a different game
+            if st.session_state.selected_game_id != new_game_id:
+                st.session_state.analyze_pitcher_id = None
+                st.session_state.analyze_team_id = None
+                st.session_state.analyze_pitcher_name = None
+                st.session_state.analyze_team_name = None
+                st.session_state.analysis_game_id = None
+
             st.query_params["game_id"] = new_game_id
-            # Set in session state
             st.session_state.selected_game_id = new_game_id
-            # Reset refresh timer
             st.session_state.last_refresh = datetime.datetime.now()
-            # No explicit rerun - Streamlit will rerun by itself
 
     # Build game selection UI
     if today_games:
@@ -381,14 +406,41 @@ elif st.session_state.active_tab == "Batter vs. Pitcher Analysis":
     ):
         st.session_state.previous_tab = "Live Score Tracker"
 
-    # Check if we're coming from the score tracker with pre-selected values
-    if st.session_state.analyze_pitcher_id and st.session_state.analyze_team_id:
+    # Check if we have a current game and no analysis parameters
+    if (
+        st.session_state.selected_game_id
+        and not st.session_state.analyze_pitcher_id
+        and not st.session_state.analyze_team_id
+    ):
+        # Try to get current game data
+        score_data = get_live_data(st.session_state.selected_game_id)
+
+        if score_data and score_data.get("abstract_game_state") == "Live":
+            # If game is live, show message to select a pitcher from live view
+            st.warning(
+                "Please select a pitcher to analyze from the Live Score Tracker view"
+            )
+            if st.button("Go to Live Score Tracker"):
+                st.session_state.active_tab = "Live Score Tracker"
+                st.rerun()
+        else:
+            # For non-live games, show message to use custom analysis
+            st.warning("Please use Custom Matchup Analysis for non-live games")
+            if st.button("Go to Custom Matchup Analysis"):
+                st.session_state.active_tab = "Custom Matchup Analysis"
+                st.rerun()
+    elif (
+        st.session_state.analyze_pitcher_id
+        and st.session_state.analyze_team_id
+        and st.session_state.analyze_pitcher_name
+        and st.session_state.analyze_team_name
+    ):
+        # Existing analysis display logic
         pitcher_id = st.session_state.analyze_pitcher_id
         team_id = st.session_state.analyze_team_id
         pitcher_name = st.session_state.analyze_pitcher_name
         team_name = st.session_state.analyze_team_name
 
-        # Display the analysis using the refactored function
         display_analysis_tab(
             team_id,
             pitcher_id,
@@ -403,13 +455,20 @@ elif st.session_state.active_tab == "Batter vs. Pitcher Analysis":
             get_batter_vs_pitcher_stats if API_IMPORTS_SUCCESS else None,
             MLB_TEAMS,
         )
-
     else:
-        # If no current pitcher, show message and button to go to custom analysis
-        st.warning("No current pitcher selected for analysis.")
-        if st.button("Go to Custom Matchup Analysis"):
-            st.session_state.active_tab = "Custom Matchup Analysis"
-            st.rerun()
+        st.warning(
+            "No pitcher selected for analysis. Please select a pitcher from the Live Score Tracker "
+            "or use Custom Matchup Analysis."
+        )
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Go to Live Score Tracker"):
+                st.session_state.active_tab = "Live Score Tracker"
+                st.rerun()
+        with col2:
+            if st.button("Go to Custom Matchup Analysis"):
+                st.session_state.active_tab = "Custom Matchup Analysis"
+                st.rerun()
 
 
 elif st.session_state.active_tab == "Custom Matchup Analysis":
@@ -442,7 +501,7 @@ elif st.session_state.active_tab == "Custom Matchup Analysis":
         # Select opponent team
         if MLB_TEAMS:
             opponent_team_name = st.selectbox(
-                "Select Opponent Team",
+                "Select Opponent Pitcher Team",
                 list(MLB_TEAMS.keys()),
                 key="custom_opponent",
             )
