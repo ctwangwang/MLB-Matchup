@@ -1,54 +1,83 @@
-# MLB Game Analysis & Tracker
+# MLB Stats Analysis System
 
-A comprehensive system for analyzing MLB games, tracking live games, and examining player matchups to gain insights into baseball statistics and performance.
+A comprehensive baseball analytics platform for analyzing MLB games, matchups, and player statistics in real-time.
 
-![MLB Game Tracker](https://img.shields.io/badge/MLB-Game%20Tracker-blue)
-![Python](https://img.shields.io/badge/Python-3.7%2B-brightgreen)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.24.0%2B-red)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.98.0%2B-blue)
+![MLB Stats Analysis](https://img.shields.io/badge/MLB-Stats%20Analysis-blue)
+![Python](https://img.shields.io/badge/Python-3.8+-green)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.98.0+-blue)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.24.0+-red)
 
-## Features
+## 📌 Overview
 
-- **Live Game Tracking**: Real-time updates of MLB games with detailed score and situation information
-- **Baseball Diamond Visualization**: Interactive visualization of the current field situation
-- **Batter vs. Pitcher Analysis**: Detailed statistical analysis of how batters perform against specific pitchers
-- **Hot/Cold Zones**: Visual representation of batter's performance in different strike zones
-- **Multi-language Support**: Available in English and Traditional Chinese
-- **Advanced Statistics**: Includes sabermetrics like FIP-, wRC+, and WAR with color-coded indicators
+This system provides real-time statistics, visualizations, and AI-powered analysis for MLB games and player matchups. It includes:
 
-## System Architecture
+- **Live Score Tracker**: Watch MLB games in real-time with detailed statistics and field visualizations
+- **Batter vs. Pitcher Analysis**: Analyze historical matchups between batters and pitchers
+- **DeepSeek AI Integration**: Get AI-powered insights for matchup analysis
+- **Custom Matchup Analysis**: Create your own hypothetical matchups for analysis
+- **Sabermetrics Support**: Advanced baseball statistics including wRC+, FIP-, WAR, and more
 
-The system consists of three main components:
+## 🏗️ System Architecture
 
-1. **FastAPI Backend**: Handles MLB data retrieval and processing
-2. **Streamlit UI**: Provides interactive user interface for analysis
-3. **Data Maintenance Tools**: Manages the retrieval and storage of MLB statistics
+The system consists of:
 
-## Installation
+1. **FastAPI Backend**: Handles data fetching, processing, and serves the REST API
+2. **Streamlit Frontend**: Provides an interactive user interface with visualizations
+3. **MLB API Integration**: Fetches real-time and historical game data
+4. **SQLite Database**: Stores player statistics for quick lookup
+5. **DeepSeek AI Integration**: Provides AI-powered analysis of matchups
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.8+
+- pip (Python package manager)
+- MLB API access
+- DeepSeek API key (optional, for AI analysis)
+
+### Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/mlb-analysis-tracker.git
-   cd mlb-analysis-tracker
+   git clone https://github.com/yourusername/mlb-stats-analysis.git
+   cd mlb-stats-analysis
    ```
 
-2. Install the required dependencies:
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-## Usage
+3. Set up API keys:
+   ```bash
+   cp config/api_keys_template.py config/api_keys.py
+   # Edit config/api_keys.py to add your DeepSeek API key
+   ```
 
-### Unified Launcher (Recommended)
+4. Initialize the database:
+   ```bash
+   python -c "from database.db_setup import initialize_database; initialize_database()"
+   ```
 
-The `mlb_launcher.py` script provides a unified command-line interface to all system components:
+### Running the System
+
+The system can be started using the comprehensive launcher script:
 
 ```bash
-# Start everything (API server, update data, and launch live tracker)
 python mlb_launcher.py --all
+```
 
+This will:
+1. Start the FastAPI server
+2. Update player data
+3. Launch the live tracker UI
+
+#### Additional Launcher Options
+
+```
 # Start API server and main UI
-python mlb_launcher.py --api-bg --ui
+python mlb_launcher.py --api --ui
 
 # Start API server in background and launch live tracker
 python mlb_launcher.py --api-bg --live
@@ -60,72 +89,150 @@ python mlb_launcher.py --update-all
 python mlb_launcher.py --live --game-id 778549
 ```
 
-For more options, run:
-```bash
-python mlb_launcher.py --help
+### Running Components Individually
+
+1. Start the API server:
+   ```bash
+   uvicorn api.app:app --reload
+   ```
+
+2. Start the Live Tracker:
+   ```bash
+   streamlit run live_tracker.py
+   ```
+
+3. Start the Main UI:
+   ```bash
+   streamlit run ui/streamlit_app.py
+   ```
+
+4. Update player data:
+   ```bash
+   python -c "from data_processing.player_data import update_player_season_data; update_player_season_data()"
+   ```
+
+## 📊 Features
+
+### Live Score Tracker
+
+- Real-time game updates
+- Score and inning information
+- Count and base runners visualization
+- Baseball diamond visualization
+- Player statistics
+- Auto-refresh functionality
+
+### Batter vs. Pitcher Analysis
+
+- Head-to-head matchup statistics
+- Team-wide analysis against a pitcher
+- Historical performance data
+- Best performing batters identification
+
+### DeepSeek AI Analysis
+
+- AI-powered matchup insights
+- Win probability calculations
+- Key factors affecting outcomes
+- Statistical pattern analysis
+
+### Sabermetrics Support
+
+- Advanced statistics visualization with color coding
+- Performance indicators including:
+  - FIP (Fielding Independent Pitching)
+  - wRC+ (Weighted Runs Created Plus)
+  - WAR (Wins Above Replacement)
+  - BABIP (Batting Average on Balls in Play)
+  - And many more
+
+## 🗄️ Data Storage
+
+The system uses an SQLite database (`mlb_data/mlb.db`) to store:
+
+- Player season statistics
+- Recent game performance data
+- Team information
+
+## 📁 Project Structure
+
+```
+mlb-stats-analysis/
+├── api/                     # FastAPI backend modules
+│   ├── app.py               # Main API application
+│   ├── deepseek_analyzer.py # DeepSeek AI integration
+│   └── mlb_api.py           # MLB API client functions
+├── config/                  # Configuration files
+│   ├── api_keys_template.py # Template for API keys
+│   ├── situation_mapping.py # Game situation mappings
+│   └── team_config.py       # MLB team information
+├── data_processing/         # Data processing modules
+│   └── player_data.py       # Player data processing
+├── database/                # Database operations
+│   ├── db_operations.py     # SQL operations
+│   └── db_setup.py          # Database initialization
+├── mlb_data/                # Data storage
+│   └── mlb.db               # SQLite database
+├── ui/                      # UI components
+│   └── streamlit_app.py     # Main Streamlit application
+├── utils/                   # Utility functions
+│   └── helpers.py           # Helper functions
+├── app.py                   # Auto-refresh demo app
+├── live_tracker.py          # Live game tracker
+├── mlb_data.py              # MLB data handling
+├── mlb_launcher.py          # Comprehensive launcher
+├── mlb_visualizations.py    # Data visualization functions
+├── requirements.txt         # Python dependencies
+├── ui_components.py         # UI components for Streamlit
+└── README.md                # This file
 ```
 
-### Individual Components
+## 🔍 API Endpoints
 
-If you prefer to run components separately:
+The FastAPI backend provides these endpoints:
 
-#### Start the API Server
-```bash
-python run_api.py
-```
+- `GET /` - API health check
+- `GET /matchup?team_id={id}&pitcher_id={id}` - Batter vs. pitcher matchup analysis
+- `GET /games/today` - Today's scheduled games
+- `GET /game/{game_id}/pitchers` - Pitchers for a specific game
+- `GET /team/{team_id}/pitchers` - Pitchers for a specific team
 
-#### Update Player Data
-```bash
-python main.py --update-season --update-recent
-```
+## 🛠️ Technologies Used
 
-#### Launch the Main UI
-```bash
-python run_ui.py
-```
+- **FastAPI**: Backend API server
+- **Streamlit**: Interactive frontend
+- **Plotly**: Interactive visualizations
+- **SQLite**: Data storage
+- **Pandas**: Data manipulation
+- **DeepSeek API**: AI-powered analysis
+- **MLB Stats API**: Real-time and historical data
 
-#### Launch the Live Tracker
-```bash
-python run_simple.py
-```
+## 🔁 Auto-Refresh Functionality
 
-## Application Views
+The live tracker features an auto-refresh capability that can be configured to update at intervals between 20-60 seconds. This ensures you get the latest game information without manual refreshing.
 
-The system offers three main views:
+## 🌐 DeepSeek AI Integration
 
-1. **Live Score Tracker**: Real-time game tracking with score updates and field visualizations
-2. **Batter vs. Pitcher Analysis**: Analyze how a specific team's batters perform against a selected pitcher
-3. **Custom Matchup Analysis**: Create custom matchups between any team and pitcher
+The system integrates with DeepSeek's AI API to provide advanced matchup insights:
+- Win probability calculations
+- Key statistical patterns
+- Actionable insights for at-bat outcomes
+- Pitcher vs. batter strength/weakness analysis
 
-## Technical Details
+*Note: To use this feature, a DeepSeek API key is required in `config/api_keys.py`.*
 
-- **API Integration**: Uses MLB Stats API to retrieve real-time game data
-- **Data Storage**: SQLite database for storing player statistics
-- **Sabermetrics**: Advanced baseball statistics for deeper analysis
-- **Auto-refresh**: Configurable auto-refresh feature for live game tracking
-- **Standalone Mode**: Can operate with or without the backend API server
+## 📱 Multi-language Support
 
-## Requirements
+The system includes support for both English and Traditional Chinese (繁體中文) interfaces.
 
-- Python 3.7+
-- Streamlit 1.24.0+
-- FastAPI 0.98.0+
-- Additional dependencies listed in `requirements.txt`
-
-## License
+## 📄 License
 
 [MIT License](LICENSE)
 
-## Acknowledgments
+## 👥 Contributing
 
-- MLB Stats API for providing the game data
-- Streamlit and FastAPI for the excellent frameworks
-- The sabermetrics community for advanced baseball statistics
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Contact
+## 📧 Contact
 
-If you have any questions or feedback, please open an issue on GitHub.
-
----
-
-Created with ⚾ by Kai Yuan (Chester) Wang
+For questions or support, please open an issue on the GitHub repository.
