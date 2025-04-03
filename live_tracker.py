@@ -148,13 +148,6 @@ def handle_tab_change():
     # Set new active tab
     st.session_state.active_tab = st.session_state.tab_selector
 
-    # Disable auto-refresh when leaving Live Score Tracker tab
-    if (
-        st.session_state.previous_tab == "Live Score Tracker"
-        and st.session_state.active_tab != "Live Score Tracker"
-    ):
-        st.session_state.auto_refresh_enabled = False
-
 
 # Update the radio button to use the new handler
 selected_tab = st.radio(
@@ -175,7 +168,7 @@ if "tab_selector" in st.session_state:
 if st.session_state.active_tab == "Live Score Tracker":
     st.title("⚾ MLB Live Score Tracker")
 
-    # Add the auto-refresh component
+    # Auto-refresh component - only active in Tab 1, but preserves its state
     if st.session_state.auto_refresh_enabled:
         # Convert seconds to milliseconds for the component
         refresh_interval_ms = st.session_state.auto_refresh_interval * 1000
@@ -185,9 +178,9 @@ if st.session_state.active_tab == "Live Score Tracker":
         )
 
         # Show refresh status
-        st.info(
-            f"🔄 Auto-refreshing every {st.session_state.auto_refresh_interval} seconds. Refresh count: {refresh_count}"
-        )
+        # st.info(
+        #    f"🔄 Auto-refreshing every {st.session_state.auto_refresh_interval} seconds. Refresh count: {refresh_count}"
+        # )
 
     if previous_tab != st.session_state.active_tab:
         st.session_state.previous_tab = previous_tab
@@ -384,11 +377,12 @@ if st.session_state.active_tab == "Live Score Tracker":
     st.sidebar.markdown("### Auto-Refresh Settings")
 
     # Toggle button for auto-refresh
-    if st.sidebar.button(
-        "🔄 Enable Auto-Refresh"
+    toggle_label = (
+        "▶️ Enable Auto-Refresh"
         if not st.session_state.auto_refresh_enabled
         else "⏹️ Disable Auto-Refresh"
-    ):
+    )
+    if st.sidebar.button(toggle_label):
         st.session_state.auto_refresh_enabled = (
             not st.session_state.auto_refresh_enabled
         )
@@ -399,16 +393,19 @@ if st.session_state.active_tab == "Live Score Tracker":
         st.sidebar.success(
             f"Auto-refresh is enabled (every {st.session_state.auto_refresh_interval} seconds)"
         )
+        st.sidebar.info(
+            "Auto-refresh will continue when returning to Live Score Tracker tab"
+        )
     else:
         st.sidebar.info("Auto-refresh is disabled")
 
     # Interval slider
     new_interval = st.sidebar.slider(
         "Refresh interval (seconds)",
-        min_value=10,
+        min_value=20,
         max_value=60,
         value=st.session_state.auto_refresh_interval,
-        step=5,
+        step=10,
     )
 
     # Update interval if changed
