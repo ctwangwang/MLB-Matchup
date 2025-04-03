@@ -121,7 +121,7 @@ if st.query_params.get("active_tab") == "analysis":
     # Set the active tab
     st.session_state.active_tab = "Batter vs. Pitcher Analysis"
     # Force refresh to ensure the tab switch takes effect
-    st.rerun()
+    # st.rerun()
 
 # Determine the index for the radio button based on current active tab
 tab_index = 0

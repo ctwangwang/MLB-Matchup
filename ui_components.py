@@ -31,7 +31,7 @@ def switch_to_analysis_tab(pitcher_id, team_id, pitcher_name, team_name):
 
     # Set active tab and refresh
     st.session_state.active_tab = "Batter vs. Pitcher Analysis"
-    st.rerun()
+    # st.rerun()
 
 
 def main_display(
