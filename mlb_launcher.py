@@ -18,6 +18,7 @@ import datetime
 import requests
 import threading
 from typing import Optional
+import pytz
 
 # Add project root to path for imports
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -127,7 +128,8 @@ def get_first_live_game_id():
     """
     try:
         # Get today's date in YYYY-MM-DD format
-        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        pacific_tz = pytz.timezone("America/Los_Angeles")
+        today = datetime.datetime.now(pacific_tz).strftime("%Y-%m-%d")
 
         # Import get_today_games function
         try:

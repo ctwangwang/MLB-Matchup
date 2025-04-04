@@ -1,9 +1,9 @@
 # config/team_config.py
 """
-MLB球隊配置，包含球隊名稱和ID的映射
+MLB team configuration, containing mappings of team names and IDs
 """
 
-# MLB球隊ID映射
+# MLB team ID mappings
 MLB_TEAMS = {
     "New York Yankees": 147,
     "Los Angeles Dodgers": 119,
@@ -37,6 +37,6 @@ MLB_TEAMS = {
     "Los Angeles Angels": 108,
 }
 
-# 數據儲存配置
+# Data storage configuration
 DATA_DIR = "mlb_data"
 DB_NAME = "mlb.db"

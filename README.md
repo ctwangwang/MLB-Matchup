@@ -221,10 +221,6 @@ The system integrates with DeepSeek's AI API to provide advanced matchup insight
 
 *Note: To use this feature, a DeepSeek API key is required in `config/api_keys.py`.*
 
-## 📱 Multi-language Support
-
-The system includes support for both English and Traditional Chinese (繁體中文) interfaces.
-
 ## 📄 License
 
 [MIT License](LICENSE)

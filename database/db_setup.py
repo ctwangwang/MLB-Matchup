@@ -1,6 +1,6 @@
 # database/db_setup.py
 """
-數據庫初始化和表格創建模組
+Database initialization and table creation module
 """
 
 import os
@@ -9,23 +9,23 @@ from config.team_config import DATA_DIR, DB_NAME
 
 
 def get_db_path():
-    """返回數據庫完整路徑"""
+    """Return complete database path"""
     os.makedirs(DATA_DIR, exist_ok=True)
     return os.path.join(DATA_DIR, DB_NAME)
 
 
 def create_connection():
-    """創建並返回數據庫連接"""
+    """Create and return database connection"""
     conn = sqlite3.connect(get_db_path())
     return conn
 
 
 def create_tables():
-    """創建所需的數據表格"""
+    """Create required data tables"""
     conn = create_connection()
     cursor = conn.cursor()
 
-    # 球員賽季統計表
+    # Player season statistics table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS player_season_stats (
             player_id INTEGER PRIMARY KEY,
@@ -39,7 +39,7 @@ def create_tables():
         )
     """)
 
-    # 球員近期統計表
+    # Player recent statistics table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS player_recent_stats (
             player_id INTEGER PRIMARY KEY,
@@ -55,11 +55,11 @@ def create_tables():
     conn.commit()
     conn.close()
 
-    print("✅ 數據庫表格創建完成")
+    print("✅ Database tables creation completed")
 
 
 def initialize_database():
-    """初始化數據庫環境"""
+    """Initialize database environment"""
     os.makedirs(DATA_DIR, exist_ok=True)
     create_tables()
 

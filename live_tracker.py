@@ -4,6 +4,7 @@ import os
 import sys
 from typing import Optional
 from streamlit_autorefresh import st_autorefresh
+import pytz
 
 # Import our modules
 from mlb_data import (
@@ -198,8 +199,9 @@ if st.session_state.active_tab == "Live Score Tracker":
         game_id_from_url = env_game_id
 
     # Sidebar date selector
-    today = datetime.datetime.now()
-    selected_date = st.sidebar.date_input("Select Date", today)
+    pacific_tz = pytz.timezone("America/Los_Angeles")
+    today = datetime.datetime.now(pacific_tz)
+    selected_date = st.sidebar.date_input("Select Date (US Pacific Time)", today)
     selected_date_str = selected_date.strftime("%Y-%m-%d")
 
     # Get today's games

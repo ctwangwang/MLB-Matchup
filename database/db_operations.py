@@ -1,6 +1,6 @@
 # database/db_operations.py
 """
-數據庫操作模組：包含查詢、更新、刪除等數據庫操作函數
+Database Operations Module: Contains functions for querying, updating, deleting, and other database operations
 """
 
 import sqlite3
@@ -8,26 +8,28 @@ from .db_setup import get_db_path
 
 
 def query_db(query, params=(), one=False):
-    """執行SQL查詢並返回結果"""
+    """Execute SQL query and return results"""
     conn = sqlite3.connect(get_db_path())
-    conn.row_factory = sqlite3.Row  # 啟用行工廠使結果能用列名訪問
+    conn.row_factory = (
+        sqlite3.Row
+    )  # Enable row factory to access results by column name
     cur = conn.cursor()
     cur.execute(query, params)
     results = cur.fetchall()
     conn.close()
 
-    # 如果請求單一結果或只有一個結果，直接返回
+    # If a single result is requested or there's only one result, return it directly
     if one or (len(results) == 1 and one is None):
         return results[0] if results else None
     return results
 
 
 def insert_or_replace_data(table, data):
-    """插入或替換數據庫中的記錄
+    """Insert or replace records in the database
 
     Args:
-        table (str): 表格名稱
-        data (dict): 列名與值的字典
+        table (str): Table name
+        data (dict): Dictionary of column names and values
     """
     conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
@@ -44,12 +46,12 @@ def insert_or_replace_data(table, data):
 
 
 def insert_many(table, columns, data_list):
-    """批量插入多行數據
+    """Batch insert multiple rows of data
 
     Args:
-        table (str): 表格名稱
-        columns (list): 列名列表
-        data_list (list): 包含多個數據元組的列表
+        table (str): Table name
+        columns (list): List of column names
+        data_list (list): List containing multiple data tuples
     """
     conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
@@ -65,7 +67,7 @@ def insert_many(table, columns, data_list):
 
 
 def clear_table(table):
-    """清空指定表格的所有數據"""
+    """Clear all data from the specified table"""
     conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
 
@@ -74,24 +76,24 @@ def clear_table(table):
     conn.commit()
     conn.close()
 
-    print(f"✅ 表格 {table} 已清空")
+    print(f"✅ Table {table} has been cleared")
 
 
 def get_team_best_hitters(
     team_id, criteria="ops", table="player_season_stats", limit=5
 ):
-    """獲取球隊最佳打者
+    """Get team's best hitters
 
     Args:
-        team_id (int): 球隊ID
-        criteria (str): 排序標準 (avg, obp, slg, ops)
-        table (str): 表格名稱
-        limit (int): 返回記錄數量
+        team_id (int): Team ID
+        criteria (str): Sorting criteria (avg, obp, slg, ops)
+        table (str): Table name
+        limit (int): Number of records to return
 
     Returns:
-        list: 打者記錄的列表
+        list: List of batter records
     """
-    # 注意：若表格為player_recent_stats，ops列名為avg_ops
+    # Note: If table is player_recent_stats, the ops column name is avg_ops
     ops_column = "avg_ops" if table == "player_recent_stats" else "ops"
     criteria = (
         ops_column if criteria == "ops" and table == "player_recent_stats" else criteria

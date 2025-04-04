@@ -7,3 +7,4 @@ python-dotenv>=1.0.0
 plotly>=5.13.0
 numpy>=1.22.0
 streamlit-autorefresh>=0.0.3
+pytz>=2021.1

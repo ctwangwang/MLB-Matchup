@@ -4,11 +4,14 @@ import pandas as pd
 import time
 import streamlit as st
 from config.situation_mapping import SITUATION_MAPPING
+import pytz
 
 
 # Function to get today's date in the required format
 def get_today_date():
-    today = datetime.datetime.now()
+    """Get today's date in Pacific Time (US West) in the required format"""
+    pacific_tz = pytz.timezone("America/Los_Angeles")
+    today = datetime.datetime.now(pacific_tz)
     return today.strftime("%Y-%m-%d")
 
 

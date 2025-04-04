@@ -1,6 +1,6 @@
 # data_processing/player_data.py
 """
-球員數據處理模組：處理球員資料的獲取、更新和分析
+Player Data Processing Module: Handles retrieval, updating, and analysis of player data
 """
 
 import time
@@ -17,34 +17,34 @@ from api.mlb_api import (
 
 def update_player_season_data(season=None):
     """
-    更新所有球員的賽季數據
+    Update all players' season data
 
     Args:
-        season (int, optional): 賽季年份，若不提供則使用前一年的數據
+        season (int, optional): Season year, if not provided uses data from the previous year
     """
-    # 如果沒有提供賽季，使用前一年的數據
+    # If season is not provided, use data from the previous year
     if season is None:
         season = datetime.now().year - 1
 
-    # 清空原先的數據
+    # Clear previous data
     clear_table("player_season_stats")
 
     for team_name, team_id in MLB_TEAMS.items():
-        print(f"📥 更新 {season} 年球隊名單: {team_name}")
+        print(f"📥 Updating {season} team roster: {team_name}")
 
-        # 獲取隊伍球員名單 - 使用當前年份的名單
+        # Get team player roster - using current year's roster
         players = get_team_roster(team_id, season=datetime.now().year)
 
         for player in players:
             player_id = player["player_id"]
             full_name = player["full_name"]
 
-            print(f"🔍 查詢 {full_name} ({player_id}) 的 {season} 年數據")
+            print(f"🔍 Querying {full_name} ({player_id})'s {season} data")
 
-            # 獲取賽季數據
+            # Get season data
             avg, obp, slg, ops = get_batter_season_stats(player_id, season=season)
 
-            # 插入數據
+            # Insert data
             player_data = {
                 "player_id": player_id,
                 "full_name": full_name,
@@ -57,44 +57,46 @@ def update_player_season_data(season=None):
             }
             insert_or_replace_data("player_season_stats", player_data)
 
-            time.sleep(0.5)  # 避免API過載
+            time.sleep(0.5)  # Avoid API overload
 
-    print(f"✅ {season} 年數據更新完成！")
+    print(f"✅ {season} data update completed!")
 
 
 def update_player_recent_data(games_count=5, season=None):
     """
-    更新所有球員的最近比賽數據
+    Update all players' recent game data
 
     Args:
-        games_count (int): 要分析的最近比賽場數
-        season (int, optional): 賽季年份，若不提供則使用當前年份
+        games_count (int): Number of recent games to analyze
+        season (int, optional): Season year, if not provided uses current year
     """
-    # 如果沒有提供賽季，使用當前年份
+    # If season is not provided, use current year
     if season is None:
         season = datetime.now().year
 
-    # 清空原先的數據
+    # Clear previous data
     clear_table("player_recent_stats")
 
     for team_name, team_id in MLB_TEAMS.items():
-        print(f"📥 更新 {season} 年 {team_name} 最近 {games_count} 場比賽數據")
+        print(f"📥 Updating {season} {team_name}'s last {games_count} games data")
 
-        # 獲取隊伍球員名單
+        # Get team player roster
         players = get_team_roster(team_id, season=season)
 
         for player in players:
             player_id = player["player_id"]
             full_name = player["full_name"]
 
-            print(f"🔍 查詢 {full_name} ({player_id}) 的最近 {games_count} 場比賽數據")
+            print(
+                f"🔍 Querying {full_name} ({player_id})'s last {games_count} games data"
+            )
 
-            # 獲取最近比賽數據
+            # Get recent games data
             _, avg, obp, slg, ops = get_player_recent_games(
                 player_id, season=season, games_count=games_count
             )
 
-            # 插入數據
+            # Insert data
             player_data = {
                 "player_id": player_id,
                 "full_name": full_name,
@@ -106,25 +108,25 @@ def update_player_recent_data(games_count=5, season=None):
             }
             insert_or_replace_data("player_recent_stats", player_data)
 
-            time.sleep(0.5)  # 避免API過載
+            time.sleep(0.5)  # Avoid API overload
 
-    print(f"✅ {season} 最近 {games_count} 場比賽數據更新完成！")
+    print(f"✅ {season}'s last {games_count} games data update completed!")
 
 
 def get_batter_vs_pitcher_stats(team_id, pitcher_id):
     """
-    獲取球隊所有打者對特定投手的數據
+    Get all batters' stats from a team against a specific pitcher
 
     Args:
-        team_id (int): 球隊ID
-        pitcher_id (int): 投手ID
+        team_id (int): Team ID
+        pitcher_id (int): Pitcher ID
 
     Returns:
-        dict: 包含分析結果的字典
+        dict: Dictionary containing analysis results
     """
     from database.db_operations import query_db
 
-    # 查詢該隊所有打者
+    # Query all batters from the team
     hitters = query_db(
         "SELECT player_id, full_name FROM player_season_stats WHERE team_id=?",
         (team_id,),
@@ -133,7 +135,7 @@ def get_batter_vs_pitcher_stats(team_id, pitcher_id):
     all_stats = []
     best_vs_pitcher = None
 
-    # 逐一獲取打者對該投手的數據
+    # Get data for each batter against the pitcher
     for hitter in hitters:
         player_id = hitter["player_id"]
         player_name = hitter["full_name"]
@@ -150,28 +152,28 @@ def get_batter_vs_pitcher_stats(team_id, pitcher_id):
             hitter_stats = (player_name, avg, obp, slg, ops)
             all_stats.append(hitter_stats)
 
-            # 找到對該投手OPS最高的打者
+            # Find the batter with highest OPS against this pitcher
             if best_vs_pitcher is None or ops > best_vs_pitcher[4]:
                 best_vs_pitcher = hitter_stats
 
-    # 按照OPS由高到低排序
+    # Sort by OPS from high to low
     all_stats = sorted(all_stats, key=lambda x: x[4], reverse=True)
 
-    # 查詢當季OPS最高的打者
+    # Query the batter with highest season OPS
     best_season = query_db(
         "SELECT full_name, avg, obp, slg, ops FROM player_season_stats WHERE team_id=? ORDER BY ops DESC LIMIT 1",
         (team_id,),
         one=True,
     )
 
-    # 查詢最近5場OPS最高的打者
+    # Query the batter with highest OPS in the last 5 games
     best_recent = query_db(
         "SELECT full_name, avg, obp, slg, avg_ops FROM player_recent_stats WHERE team_id=? ORDER BY avg_ops DESC LIMIT 1",
         (team_id,),
         one=True,
     )
 
-    # 組裝返回結果
+    # Assemble return results
     return {
         "best_season_hitter": tuple(best_season) if best_season else None,
         "best_recent_hitter": tuple(best_recent) if best_recent else None,
