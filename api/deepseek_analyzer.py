@@ -74,7 +74,7 @@ BATTER: {batter_name}
 {formatted_batter_data}
 
 calculate win probability projections for this matchup accounting for all relevant factors and display in front. 
-Present the final assessment with a clear numerical win probability percentage and key factors most likely to determine the outcome within 10 lines.
+Present the final assessment with a clear numerical win probability percentage and key factors most likely to determine the outcome within 7 lines.
 """
 
     # Prepare request payload

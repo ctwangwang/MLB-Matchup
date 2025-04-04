@@ -144,10 +144,48 @@ elif st.session_state.active_tab == "Custom Matchup Analysis":
 
 
 def handle_tab_change():
+    """
+    Handle tab change with smart analysis detection.
+    When switching to the "Batter vs. Pitcher Analysis" tab, automatically
+    analyze the current active pitcher if one is available.
+    """
     # Store previous tab
-    st.session_state.previous_tab = st.session_state.active_tab
+    previous_tab = st.session_state.active_tab
     # Set new active tab
-    st.session_state.active_tab = st.session_state.tab_selector
+    new_tab = st.session_state.tab_selector
+
+    # Check if we're switching to analysis tab
+    if new_tab == "Batter vs. Pitcher Analysis" and previous_tab != new_tab:
+        # Check if we have game data with a current pitcher
+        if st.session_state.selected_game_id:
+            score_data = get_live_data(st.session_state.selected_game_id)
+
+            # Only proceed for live games with active pitchers
+            if (
+                score_data
+                and score_data.get("abstract_game_state") == "Live"
+                and score_data.get("pitcher_id")
+            ):
+                # Determine pitcher's team
+                if score_data.get("inning_half") == "Top":
+                    # Home team is pitching in top of inning
+                    pitcher_team_id = score_data["home_team_id"]
+                    pitcher_team = score_data["home_team"]
+                else:
+                    # Away team is pitching in bottom of inning
+                    pitcher_team_id = score_data["away_team_id"]
+                    pitcher_team = score_data["away_team"]
+
+                # Auto-analyze current matchup
+                switch_to_analysis_tab(
+                    score_data["pitcher_id"],
+                    pitcher_team_id,
+                    score_data["pitcher"],
+                    pitcher_team,
+                )
+
+    # Update active tab
+    st.session_state.active_tab = new_tab
 
 
 # Update the radio button to use the new handler
@@ -376,7 +414,7 @@ if st.session_state.active_tab == "Live Score Tracker":
         st.rerun()
 
     # Add to the sidebar in the Live Score Tracker tab
-    st.sidebar.markdown("### Auto-Refresh Settings")
+    st.sidebar.markdown("### Auto-Refresh Settings (double click)")
 
     # Toggle button for auto-refresh
     toggle_label = (
@@ -384,11 +422,24 @@ if st.session_state.active_tab == "Live Score Tracker":
         if not st.session_state.auto_refresh_enabled
         else "⏹️ Disable Auto-Refresh"
     )
+    # Check if this is a button click (not an automatic page refresh)
+    if "auto_refresh_clicked" not in st.session_state:
+        st.session_state.auto_refresh_clicked = False
+
+    # Create the button with a callback
     if st.sidebar.button(toggle_label):
+        # Set clicked state to true
+        st.session_state.auto_refresh_clicked = True
+        # Toggle the auto-refresh state
         st.session_state.auto_refresh_enabled = (
             not st.session_state.auto_refresh_enabled
         )
-        st.session_state.last_auto_refresh = datetime.datetime.now()  # Reset the timer
+        # Reset the timer
+        st.session_state.last_auto_refresh = datetime.datetime.now()
+
+    # If this is a refresh after clicking, we should already have the state set correctly
+    if st.session_state.auto_refresh_clicked:
+        st.session_state.auto_refresh_clicked = False  # Reset for next time
 
     # Status indicator
     if st.session_state.auto_refresh_enabled:

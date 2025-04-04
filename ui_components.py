@@ -8,23 +8,31 @@ from mlb_data import get_live_data  # Add this import
 
 def switch_to_analysis_tab(pitcher_id, team_id, pitcher_name, team_name):
     """
-    Function to switch to analysis tab with proper data
-    Now automatically handles opposing team logic
+    Function to switch to analysis tab with proper data.
+    Automatically identifies the current pitcher and opposing team batters.
+
+    Args:
+        pitcher_id (int): ID of the pitcher to analyze
+        team_id (int): ID of the pitcher's team
+        pitcher_name (str): Name of the pitcher to analyze
+        team_name (str): Name of the pitcher's team
     """
-    # Get current game data (simplified version)
+    # Get current game data
     game_data = get_live_data(st.session_state.selected_game_id)
 
-    # Determine opposing team (critical fix remains)
+    # Determine the opposing team (team batting against the pitcher)
     if team_id == game_data["away_team_id"]:
+        # If pitcher is from away team, analyze home team batters
         batter_team_id = game_data["home_team_id"]
         batter_team_name = game_data["home_team"]
     else:
+        # If pitcher is from home team, analyze away team batters
         batter_team_id = game_data["away_team_id"]
         batter_team_name = game_data["away_team"]
 
-    # Store analysis parameters (now with correct opposing team)
+    # Store analysis parameters in session state
     st.session_state.analyze_pitcher_id = pitcher_id
-    st.session_state.analyze_team_id = batter_team_id  # Using opposing team
+    st.session_state.analyze_team_id = batter_team_id  # This is the opposing team
     st.session_state.analyze_pitcher_name = pitcher_name
     st.session_state.analyze_team_name = batter_team_name
     st.session_state.analysis_game_id = st.session_state.selected_game_id
@@ -269,7 +277,7 @@ def main_display(
                                 st.markdown(f"**{previous_season} Season Stats:**")
                                 stats_df = pd.DataFrame(
                                     {
-                                        "Stat": ["ERA", "WHIP", "AVG", "OPS"],
+                                        "Stat": ["ERA", "WHIP", "OPP. AVG", "OPP. OPS"],
                                         "Value": [
                                             f"{era:.2f}",
                                             f"{whip:.2f}",
@@ -294,9 +302,7 @@ def main_display(
                                             fip_minus = convert_stat_to_int(
                                                 sabermetrics[1]
                                             )
-                                            pWAR = convert_stat_to_float(
-                                                sabermetrics[2]
-                                            )
+                                            WAR = convert_stat_to_float(sabermetrics[2])
 
                                             # Use HTML for layout instead of nested columns
                                             st.markdown(
@@ -309,10 +315,10 @@ def main_display(
                                                         {fip_minus}</div>
                                                     </div>
                                                     <div style='text-align: center; width: 48%;'>
-                                                        <p style='margin-bottom: 0;'>pWAR</p>
-                                                        <div style='background-color: {get_pitcher_war_color(pWAR)}; 
+                                                        <p style='margin-bottom: 0;'>WAR</p>
+                                                        <div style='background-color: {get_pitcher_war_color(WAR)}; 
                                                         padding: 5px; border-radius: 5px; color: white; font-weight: bold;'>
-                                                        {pWAR:.1f}</div>
+                                                        {WAR:.1f}</div>
                                                     </div>
                                                 </div>
                                                 """,
@@ -355,7 +361,7 @@ def main_display(
                                 st.markdown(f"**{previous_season} Season Stats:**")
                                 stats_df = pd.DataFrame(
                                     {
-                                        "Stat": ["ERA", "WHIP", "AVG", "OPS"],
+                                        "Stat": ["ERA", "WHIP", "OPP. AVG", "OPP. OPS"],
                                         "Value": [
                                             f"{era:.2f}",
                                             f"{whip:.2f}",
@@ -380,9 +386,7 @@ def main_display(
                                             fip_minus = convert_stat_to_int(
                                                 sabermetrics[1]
                                             )
-                                            pWAR = convert_stat_to_float(
-                                                sabermetrics[2]
-                                            )
+                                            WAR = convert_stat_to_float(sabermetrics[2])
 
                                             # Use HTML for layout instead of nested columns
                                             st.markdown(
@@ -395,10 +399,10 @@ def main_display(
                                                         {fip_minus}</div>
                                                     </div>
                                                     <div style='text-align: center; width: 48%;'>
-                                                        <p style='margin-bottom: 0;'>pWAR</p>
-                                                        <div style='background-color: {get_pitcher_war_color(pWAR)}; 
+                                                        <p style='margin-bottom: 0;'>WAR</p>
+                                                        <div style='background-color: {get_pitcher_war_color(WAR)}; 
                                                         padding: 5px; border-radius: 5px; color: white; font-weight: bold;'>
-                                                        {pWAR:.1f}</div>
+                                                        {WAR:.1f}</div>
                                                     </div>
                                                 </div>
                                                 """,
@@ -626,6 +630,7 @@ def main_display(
                 st.subheader("Current Pitcher")
                 st.markdown(f"{pitcher_team} : {score_data['pitcher']}")
 
+                current_year = datetime.datetime.now().year
                 # Add pitcher season stats
                 if (
                     API_IMPORTS_SUCCESS
@@ -633,6 +638,131 @@ def main_display(
                     and get_pitcher_sabermetrics
                 ):
                     pitcher_id = score_data["pitcher_id"]
+
+                    # Get current season (2025) stats
+                    current_pitcher_stats = get_pitcher_season_stats(
+                        pitcher_id, current_year
+                    )
+                    current_pitcher_saber = get_pitcher_sabermetrics(
+                        pitcher_id, current_year
+                    )
+
+                    if current_pitcher_stats or current_pitcher_saber:
+                        st.markdown(
+                            f"**{score_data['pitcher']}'s {current_year} Season Stats:**"
+                        )
+
+                        wins_val = (
+                            int(current_pitcher_stats[8])
+                            if current_pitcher_stats
+                            and current_pitcher_stats[8] is not None
+                            else "-"
+                        )
+                        losses_val = (
+                            int(current_pitcher_stats[9])
+                            if current_pitcher_stats
+                            and current_pitcher_stats[9] is not None
+                            else "-"
+                        )
+                        holds_val = (
+                            int(current_pitcher_stats[10])
+                            if current_pitcher_stats
+                            and current_pitcher_stats[10] is not None
+                            else "-"
+                        )
+                        saves_val = (
+                            int(current_pitcher_stats[11])
+                            if current_pitcher_stats
+                            and current_pitcher_stats[11] is not None
+                            else "-"
+                        )
+                        # Process values for color coding
+                        era_val = (
+                            f"{float(current_pitcher_stats[2]):.2f}"
+                            if current_pitcher_stats
+                            and current_pitcher_stats[2] is not None
+                            else "-"
+                        )
+                        whip_val = (
+                            f"{float(current_pitcher_stats[3]):.2f}"
+                            if current_pitcher_stats
+                            and current_pitcher_stats[3] is not None
+                            else "-"
+                        )
+
+                        fip_minus_val = (
+                            int(current_pitcher_saber[1])
+                            if current_pitcher_saber
+                            and current_pitcher_saber[1] is not None
+                            else "-"
+                        )
+                        fip_minus_color = (
+                            get_fip_minus_color(fip_minus_val)
+                            if fip_minus_val != "-"
+                            else "white"
+                        )
+
+                        war_val = (
+                            float(current_pitcher_saber[2])
+                            if current_pitcher_saber
+                            and current_pitcher_saber[2] is not None
+                            else "-"
+                        )
+                        war_display = f"{war_val:.1f}" if war_val != "-" else "-"
+                        war_color = (
+                            get_pitcher_war_color(war_val)
+                            if war_val != "-"
+                            else "white"
+                        )
+
+                        # Use HTML to display colored values
+                        st.markdown(
+                            f"""
+                        <style>
+                        .stats-table {{
+                            width: 100%;
+                            text-align: center;
+                            border-collapse: collapse;
+                            margin-bottom: 15px;
+                        }}
+                        .stats-table th {{
+                            padding: 8px;
+                            background-color: #2c3e50;  /* Dark blue header */
+                            color: white;
+                            font-weight: bold;
+                            border: 1px solid #555;
+                        }}
+                        .stats-table td {{
+                            padding: 8px;
+                            border: 1px solid #555;
+                            background-color: #1e2933;  /* Slightly lighter than the main background */
+                        }}
+                        </style>
+                        <table class="stats-table">
+                            <tr>
+                                <th>W</th>
+                                <th>L</th>
+                                <th>HLD</th>
+                                <th>SV</th>
+                                <th>ERA</th>
+                                <th>WHIP</th>
+                                <th>FIP-</th>
+                                <th>WAR</th>
+                            </tr>
+                            <tr>
+                                <td>{wins_val}</td>
+                                <td>{losses_val}</td>
+                                <td>{holds_val}</td>
+                                <td>{saves_val}</td>
+                                <td>{era_val}</td>
+                                <td>{whip_val}</td>
+                                <td style="color: {fip_minus_color}; font-weight: bold;">{fip_minus_val}</td>
+                                <td style="color: {war_color}; font-weight: bold;">{war_display}</td>
+                            </tr>
+                        </table>
+                        """,
+                            unsafe_allow_html=True,
+                        )
                     pitcher_stats = get_pitcher_season_stats(
                         pitcher_id, previous_season
                     )
@@ -752,6 +882,7 @@ def main_display(
                 st.subheader("Current Batter")
                 st.markdown(f"{batter_team} : {score_data['batter']}")
 
+                current_year = datetime.datetime.now().year
                 # Batter season stats
                 if (
                     API_IMPORTS_SUCCESS
@@ -761,6 +892,130 @@ def main_display(
                     batter_id = score_data.get("batter_id")
                     batter_name = score_data["batter"]
 
+                    # Get current season stats for the batter
+                    current_season_stats = None
+                    current_saber_stats = None
+                    if batter_id:
+                        current_season_stats = get_batter_season_stats(
+                            batter_id, current_year
+                        )
+                        current_saber_stats = get_batter_sabermetrics(
+                            batter_id, current_year
+                        )
+
+                    # Display current season stats for the batter
+                    if current_season_stats or current_saber_stats:
+                        st.markdown(f"**{batter_name}'s {current_year} Season Stats:**")
+
+                        hr_val = (
+                            int(current_season_stats[6])
+                            if current_season_stats
+                            and current_season_stats[6] is not None
+                            else "-"
+                        )
+                        rbi_val = (
+                            int(current_season_stats[7])
+                            if current_season_stats
+                            and current_season_stats[7] is not None
+                            else "-"
+                        )
+                        # Process values for color coding
+                        avg_val = (
+                            f"{float(current_season_stats[0]):.3f}"
+                            if current_season_stats
+                            and current_season_stats[0] is not None
+                            else "-"
+                        )
+                        obp_val = (
+                            f"{float(current_season_stats[1]):.3f}"
+                            if current_season_stats
+                            and current_season_stats[1] is not None
+                            else "-"
+                        )
+                        slg_val = (
+                            f"{float(current_season_stats[2]):.3f}"
+                            if current_season_stats
+                            and current_season_stats[2] is not None
+                            else "-"
+                        )
+                        ops_val = (
+                            f"{float(current_season_stats[3]):.3f}"
+                            if current_season_stats
+                            and current_season_stats[3] is not None
+                            else "-"
+                        )
+
+                        wrc_plus_val = (
+                            int(current_saber_stats[1])
+                            if current_saber_stats
+                            and current_saber_stats[1] is not None
+                            else "-"
+                        )
+                        wrc_plus_color = (
+                            get_wrc_plus_color(wrc_plus_val)
+                            if wrc_plus_val != "-"
+                            else "white"
+                        )
+
+                        war_val = (
+                            float(current_saber_stats[2])
+                            if current_saber_stats
+                            and current_saber_stats[2] is not None
+                            else "-"
+                        )
+                        war_display = f"{war_val:.1f}" if war_val != "-" else "-"
+                        war_color = (
+                            get_batter_war_color(war_val) if war_val != "-" else "white"
+                        )
+
+                        # Use HTML to display colored values
+                        st.markdown(
+                            f"""
+                        <style>
+                        .stats-table {{
+                            width: 100%;
+                            text-align: center;
+                            border-collapse: collapse;
+                            margin-bottom: 15px;
+                        }}
+                        .stats-table th {{
+                            padding: 8px;
+                            background-color: #2c3e50;  /* Dark blue header */
+                            color: white;
+                            font-weight: bold;
+                            border: 1px solid #555;
+                        }}
+                        .stats-table td {{
+                            padding: 8px;
+                            border: 1px solid #555;
+                            background-color: #1e2933;  /* Slightly lighter than the main background */
+                        }}
+                        </style>
+                        <table class="stats-table">
+                            <tr>
+                                <th>HR</th>
+                                <th>RBI</th>
+                                <th>AVG</th>
+                                <th>OBP</th>
+                                <th>SLG</th>
+                                <th>OPS</th>
+                                <th>wRC+</th>
+                                <th>WAR</th>
+                            </tr>
+                            <tr>
+                                <td>{hr_val}</td>
+                                <td>{rbi_val}</td>
+                                <td>{avg_val}</td>
+                                <td>{obp_val}</td>
+                                <td>{slg_val}</td>
+                                <td>{ops_val}</td>
+                                <td style="color: {wrc_plus_color}; font-weight: bold;">{wrc_plus_val}</td>
+                                <td style="color: {war_color}; font-weight: bold;">{war_display}</td>
+                            </tr>
+                        </table>
+                        """,
+                            unsafe_allow_html=True,
+                        )
                     # Get current season stats for the batter
                     season_stats = None
                     saber_stats = None
