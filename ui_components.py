@@ -709,11 +709,7 @@ def main_display(
                             else "-"
                         )
                         war_display = f"{war_val:.1f}" if war_val != "-" else "-"
-                        war_color = (
-                            get_pitcher_war_color(war_val)
-                            if war_val != "-"
-                            else "white"
-                        )
+                        war_color = "white"
 
                         # Use HTML to display colored values
                         st.markdown(
@@ -964,9 +960,7 @@ def main_display(
                             else "-"
                         )
                         war_display = f"{war_val:.1f}" if war_val != "-" else "-"
-                        war_color = (
-                            get_batter_war_color(war_val) if war_val != "-" else "white"
-                        )
+                        war_color = "white"
 
                         # Use HTML to display colored values
                         st.markdown(
