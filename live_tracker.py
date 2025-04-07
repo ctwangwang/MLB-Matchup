@@ -468,6 +468,19 @@ if st.session_state.active_tab == "Live Score Tracker":
 
     st.sidebar.markdown("---")
 
+    # Add "Developed by" section with LinkedIn link
+    st.sidebar.markdown(
+        """
+        <div style="text-align: center; padding: 10px; margin-top: 20px;">
+            <p style="margin-bottom: 5px;">Developed by</p>
+            <a href="https://www.linkedin.com/in/kai-yuan-wang-66274486/" target="_blank" style="color: #0077B5; text-decoration: none; font-weight: bold;">
+                Kai-Yuan(Chester) Wang
+                <img src="https://content.linkedin.com/content/dam/me/business/en-us/amp/brand-site/v2/bg/LI-Bug.svg.original.svg" width="15" height="15" style="margin-left: 5px; vertical-align: middle;">
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     # Only proceed if we have a game ID
     if game_id:
         # Save the selected game ID to session state
